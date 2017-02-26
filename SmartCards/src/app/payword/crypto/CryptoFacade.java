@@ -9,6 +9,11 @@ import java.util.Map;
 public class CryptoFacade
 {
 
+	public static CryptoFacade getInstance()
+	{
+		return null;
+	}
+
 	/*
 	 * RSA signature over SHA-1 message
 	 */
