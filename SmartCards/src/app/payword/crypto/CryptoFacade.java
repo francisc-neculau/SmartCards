@@ -1,7 +1,9 @@
 package app.payword.crypto;
 
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
@@ -12,7 +14,11 @@ import java.security.SignatureException;
 import java.security.interfaces.RSAKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -244,13 +250,32 @@ public class CryptoFacade
 	
 	public static RSAPublicKey decodePublicKey(String encodedPublicKey)
 	{
-		// TODO Auto-generated method stub
+		String[] modulusExponentPair = encodedPublicKey.substring(1, encodedPublicKey.length() - 2).split("&");
+		RSAPublicKeySpec keySpec = new RSAPublicKeySpec(new BigInteger(modulusExponentPair[0].getBytes()), new BigInteger(modulusExponentPair[1].getBytes()));
+		
+		KeyFactory keyFactory;
+		try 
+		{
+			keyFactory = KeyFactory.getInstance("RSA");
+			RSAPublicKey pubKey = (RSAPublicKey) keyFactory.generatePublic(keySpec);
+			return pubKey;
+		} 
+		catch (NoSuchAlgorithmException e) 
+		{
+			e.printStackTrace();
+		}
+		catch (InvalidKeySpecException e) 
+		{
+			e.printStackTrace();
+		}
+		
+		
 		return null;
 	}
 	
 	public static String encodePublicKey(RSAPublicKey publicKey)
 	{
 		// TODO Auto-generated method stub
-		return null;
+		return "{" + new String(publicKey.getModulus().toByteArray()) + "&" + new String(publicKey.getPublicExponent().toByteArray()) + "}";
 	}
 }
