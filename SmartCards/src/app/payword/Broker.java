@@ -82,16 +82,16 @@ public class Broker extends Servent
 			// Certification
 			//
 			case "CERTIFY":
-				send(user, "CERTIFY-REQUIREMENTS -i=identity -pk=publicKey -ipAddr=ipAddress");
+				send(user, "CERTIFY-REQUIREMENTS -in=identityNumber -pubk=publicKey -ipAddr=ipAddress");
 				break;
 			case "CERTIFY-REQUIREMENTS-OFFER":
-				String userIdentity     = arguments.substring(arguments.indexOf("-i=") + 3, arguments.indexOf(" ", arguments.indexOf("-i=")));
-				String userPublicKey    = arguments.substring(arguments.indexOf("-pk=") + 3, arguments.indexOf(" ", arguments.indexOf("-pk=")));
-				String userIpAddress    = arguments.substring(arguments.indexOf("-ipAddr=") + 8);
-				String creditCardNumber = "4412 1234 0099 2134";
-				Certificate certificate = new Certificate(identity, getPublicKey().toString(), userIdentity, userPublicKey, userIpAddress, creditCardNumber, new Date(12937107481L));
+				String userIdentityNumber = arguments.substring(arguments.indexOf("-in=") + 3, arguments.indexOf(" ", arguments.indexOf("-in=")));
+				String userPublicKey      = arguments.substring(arguments.indexOf("-pubk=") + 3, arguments.indexOf(" ", arguments.indexOf("-pubk=")));
+				String userIpAddress      = arguments.substring(arguments.indexOf("-ipAddr=") + 8);
+				String creditCardNumber   = "4412 1234 0099 2134";
+				Certificate certificate   = new Certificate(identity, getPublicKey().toString(), userIdentityNumber, userPublicKey, userIpAddress, creditCardNumber, new Date(12937107481L));
 				String certificateHash      = CryptoFacade.getInstance().generateHash(certificate.toString());
-				String certificateSignature = CryptoFacade.getInstance().generateSignature(certificateHash, getPublicKey(), getPrivateKey());
+				String certificateSignature = CryptoFacade.getInstance().generateSignature(certificateHash, getPrivateKey());
 				send(user, "CERTIFICATE" + " " + certificate + " " + certificateSignature);
 				break;
 			//

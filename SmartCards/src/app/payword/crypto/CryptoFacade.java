@@ -21,6 +21,8 @@ import java.util.Map;
 public class CryptoFacade
 {	
 	private SecureRandom random;
+	public static final String PUBLIC_KEY  = "publicKey";
+	public static final String PRIVATE_KEY = "privateKey";
 	
 	private static class InstanceHolder 
 	{
@@ -190,17 +192,17 @@ public class CryptoFacade
 	 * privateKey - RSAPrivateKey
 	 * Cheia publica este (n, e), cheia privata este (p, q, d)
 	 */
-	public Map<KeyType, RSAKey> generateRsaKeys()
+	public Map<String, RSAKey> generateRsaKeys()
 	{
 		try 
 		{
-			Map<KeyType, RSAKey> map = new HashMap<>(); 
+			Map<String, RSAKey> map = new HashMap<>(); 
 			KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
 			keyGen.initialize(512, random);
 			
 			KeyPair pair = keyGen.generateKeyPair();
-			map.put(KeyType.PUBLIC, (RSAKey) pair.getPublic());
-			map.put(KeyType.PRIVATE, (RSAKey) pair.getPrivate());
+			map.put(PUBLIC_KEY, (RSAKey) pair.getPublic());
+			map.put(PRIVATE_KEY, (RSAKey) pair.getPrivate());
 			
 			return map;
 		} 
@@ -239,4 +241,16 @@ public class CryptoFacade
 		 
 		 return resultList.toArray(new Byte[0]);
 	 }
+	
+	public static RSAPublicKey decodePublicKey(String encodedPublicKey)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	public static String encodePublicKey(RSAPublicKey publicKey)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
