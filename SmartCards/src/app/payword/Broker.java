@@ -6,6 +6,7 @@ import java.sql.Date;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 
+import app.payword.crypto.CryptoFacade;
 import app.payword.network.Servent;
 
 public class Broker extends Servent
@@ -84,12 +85,14 @@ public class Broker extends Servent
 				send(user, "CERTIFY-REQUIREMENTS -i=identity -pk=publicKey -ipAddr=ipAddress");
 				break;
 			case "CERTIFY-REQUIREMENTS-OFFER":
-				String userIdentity = arguments.substring(arguments.indexOf("-i=") + 3, arguments.indexOf(" ", arguments.indexOf("-i=")));
-				String userPublicKey = arguments.substring(arguments.indexOf("-pk=") + 3, arguments.indexOf(" ", arguments.indexOf("-pk=")));
-				String userIpAddress = arguments.substring(arguments.indexOf("-ipAddr=") + 8);
+				String userIdentity     = arguments.substring(arguments.indexOf("-i=") + 3, arguments.indexOf(" ", arguments.indexOf("-i=")));
+				String userPublicKey    = arguments.substring(arguments.indexOf("-pk=") + 3, arguments.indexOf(" ", arguments.indexOf("-pk=")));
+				String userIpAddress    = arguments.substring(arguments.indexOf("-ipAddr=") + 8);
 				String creditCardNumber = "4412 1234 0099 2134";
-				Certificate certificate = new Certificate(identity, getPublicKey(), userIdentity, userPublicKey, userIpAddress, creditCardNumber, new Date(12937107481L));
-				send(user, "CERTIFICATE" + " " + certificate);
+				Certificate certificate = new Certificate(identity, getPublicKey().toString(), userIdentity, userPublicKey, userIpAddress, creditCardNumber, new Date(12937107481L));
+				String certificateHash      = CryptoFacade.getInstance().generateHash(certificate.toString());
+				String certificateSignature = CryptoFacade.getInstance().generateSignature(certificateHash, getPublicKey(), getPrivateKey());
+				send(user, "CERTIFICATE" + " " + certificate + " " + certificateSignature);
 				break;
 			//
 			// Closing

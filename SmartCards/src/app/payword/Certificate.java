@@ -79,7 +79,6 @@ public class Certificate
 		sb.append(creditCardNumber);
 		sb.append(" ");
 		sb.append(expirationDate);
-		sb.append(" ");
 		return sb.toString();
 	}
 }

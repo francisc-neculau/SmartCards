@@ -5,6 +5,8 @@ import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.Scanner;
 
 import org.apache.log4j.Logger;
@@ -15,8 +17,8 @@ import org.apache.log4j.Logger;
  */
 public abstract class Servent extends Thread
 {
-	private String publicKey;
-	private String privateKey;
+	private RSAPublicKey  publicKey;
+	private RSAPrivateKey privateKey;
 	
 	private ServerSocket passiveSocket;
 	private Socket activeSocket;
@@ -149,7 +151,7 @@ public abstract class Servent extends Thread
 		return message;
 	}
 
-	protected Socket connectToServant(ServentInformation serventInformation, int numberOfAttempts)
+	protected Socket connectToServant(ServentIdentity serventInformation, int numberOfAttempts)
 	{
 		logger.info("Establishing connection to " + serventInformation + " with max number of attempts : " + numberOfAttempts);
 		Socket servant = null;
@@ -191,12 +193,12 @@ public abstract class Servent extends Thread
 		return servant;
 	}
 
-	public String getPublicKey()
+	public RSAPublicKey getPublicKey()
 	{
 		return publicKey;
 	}
 
-	public String getPrivateKey()
+	public RSAPrivateKey getPrivateKey()
 	{
 		return privateKey;
 	}
