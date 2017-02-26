@@ -38,6 +38,23 @@ public abstract class Servent extends Thread
 	private void safeCloseConnection(Socket client)
 	{
 		// This method must guarantee closing !
+		try 
+		{
+			client.close();
+		} 
+		catch (IOException e) 
+		{
+			Servent.this.logger.error("[ERROR] Closing failed for the client: " + client.getLocalAddress().toString(), e);
+			try 
+			{
+				Thread.sleep(5000);
+				safeCloseConnection(client);
+			} 
+			catch (InterruptedException e1) 
+			{
+				e1.printStackTrace();
+			}
+		}
 	}
 	
 	@Override
