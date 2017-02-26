@@ -1,11 +1,11 @@
 package app.payword.crypto;
 
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Array;
 import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
@@ -13,17 +13,31 @@ import java.security.interfaces.RSAKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class CryptoFacade
 {	
-	private static class InstanceHolder {
+	private SecureRandom random;
+	
+	private static class InstanceHolder 
+	{
 	    private static final CryptoFacade instance = new CryptoFacade();
 	}
 
+	private CryptoFacade()
+	{
+		try 
+		{
+			random = SecureRandom.getInstanceStrong();
+		} 
+		catch (NoSuchAlgorithmException e) 
+		{
+			e.printStackTrace();
+		}
+	}
 	public static CryptoFacade getInstance() {
 	    return InstanceHolder.instance;
 	}
@@ -135,12 +149,19 @@ public class CryptoFacade
 	public List<String> generateHashChain(String startingSeed, int chainLength)
 	{
 		List<String> hashChainList = new ArrayList<>();
+		int elementCounter = 0;
 		for( int index = chainLength - 1; index >= 0; index--)
 		{
 			if(index == chainLength - 1)
+			{
 				hashChainList.add(generateHash(startingSeed));
+				elementCounter++;
+			}
 			else
-				hashChainList.add(generateHash(hashChainList.get(index - 1)));
+			{
+				hashChainList.add(generateHash(hashChainList.get(elementCounter - 1)));
+				elementCounter++;
+			}
 		}
 		
 		Collections.reverse(hashChainList); // reverse the order of the elements
@@ -150,13 +171,40 @@ public class CryptoFacade
 	/*
 	 * Not fucking sure
 	 */
-	public String generateRandom(String seed)
+//	public String generateRandom(String seed)
+//	{
+//		try 
+//		{
+//			return (new SecureRandom(seed.getBytes("UTF-8"))).toString();
+//		} 
+//		catch (UnsupportedEncodingException e) 
+//		{
+//			e.printStackTrace();
+//		}
+//		
+//		return null;
+//	}
+
+	/*
+	 * publicKey  - RSAPublicKey
+	 * privateKey - RSAPrivateKey
+	 * Cheia publica este (n, e), cheia privata este (p, q, d)
+	 */
+	public Map<KeyType, RSAKey> generateRsaKeys()
 	{
 		try 
 		{
-			return (new SecureRandom(seed.getBytes("UTF-8"))).toString();
+			Map<KeyType, RSAKey> map = new HashMap<>(); 
+			KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+			keyGen.initialize(512, random);
+			
+			KeyPair pair = keyGen.generateKeyPair();
+			map.put(KeyType.PUBLIC, (RSAKey) pair.getPublic());
+			map.put(KeyType.PRIVATE, (RSAKey) pair.getPrivate());
+			
+			return map;
 		} 
-		catch (UnsupportedEncodingException e) 
+		catch (NoSuchAlgorithmException e) 
 		{
 			e.printStackTrace();
 		}
@@ -165,26 +213,16 @@ public class CryptoFacade
 	}
 
 	/*
-	 * publicKey  - RSAPublicKey
-	 * privateKey - RSAPrivateKey
-	 * Cheia publica este (n, e), cheia privata este (p, q, d)
-	 */
-	public Map<String, RSAKey> generateRsaKeys()
-	{
-		return null;
-	}
-
-	/*
 	 *  convert SHA-1 hash to String
 	 */
-	public static String convertToString(byte[] data) 
-	 { 
-       StringBuffer buf = new StringBuffer();
-       for(byte bit: data)
-       	buf.append(bit);
-       
-       return buf.toString();
-	 }
+//	public static String convertToString(byte[] data) 
+//	 { 
+//       StringBuffer buf = new StringBuffer();
+//       for(byte bit: data)
+//       	buf.append(bit);
+//       
+//       return buf.toString();
+//	 }
 	
 	
 	/*
