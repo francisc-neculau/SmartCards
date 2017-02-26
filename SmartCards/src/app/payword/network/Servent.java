@@ -44,7 +44,8 @@ public abstract class Servent extends Thread
 		} 
 		catch (IOException e) 
 		{
-			Servent.this.logger.error("[ERROR] Closing failed for the client: " + client.getLocalAddress().toString(), e);
+			Servent.this.logger.warn("Closing failed for the client: " + client.getLocalAddress().toString());
+			Servent.this.logger.info("Retry to close the connection in 5 seconds...");
 			try 
 			{
 				Thread.sleep(5000);
