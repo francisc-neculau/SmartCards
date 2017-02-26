@@ -88,14 +88,7 @@ public class Broker extends Servent
 				String userPublicKey = arguments.substring(arguments.indexOf("-pk=") + 3, arguments.indexOf(" ", arguments.indexOf("-pk=")));
 				String userIpAddress = arguments.substring(arguments.indexOf("-ipAddr=") + 8);
 				String creditCardNumber = "4412 1234 0099 2134";
-				Certificate certificate = new Certificate(
-						identity, 
-						getPublicKey(), 
-						userIdentity, 
-						userPublicKey, 
-						userIpAddress, 
-						creditCardNumber, 
-						new Date(12937107481L));
+				Certificate certificate = new Certificate(identity, getPublicKey(), userIdentity, userPublicKey, userIpAddress, creditCardNumber, new Date(12937107481L));
 				send(user, "CERTIFICATE" + " " + certificate);
 				break;
 			//

@@ -40,7 +40,7 @@ public class User extends Servent
 	public void obtainCertificate()
 	{
 		Socket brokerSocket = connectToServant(brokerInformation, 4);
-		
+
 		send(brokerSocket, "HELLO-User");
 		String message = receive(brokerSocket);
 		System.out.println(message);
@@ -60,5 +60,10 @@ public class User extends Servent
 		send(brokerSocket, "CLOSE");
 		message = receive(brokerSocket);
 		logger.info(message);
+	}
+	
+	public void generateNthChain()
+	{
+		
 	}
 }
