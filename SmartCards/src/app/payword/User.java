@@ -12,7 +12,8 @@ public class User extends Servent
 {
 	private Certificate certificate;
 	private ServentInformation brokerInformation;
-	
+	private int userIdentity;
+
 	public User(ServentInformation brokerInformation)
 	{
 		super(Logger.getLogger("User"), "127.0.0.1", 6767);
@@ -39,23 +40,25 @@ public class User extends Servent
 	public void obtainCertificate()
 	{
 		Socket brokerSocket = connectToServant(brokerInformation, 4);
+		
+		send(brokerSocket, "HELLO-User");
 		String message = receive(brokerSocket);
 		System.out.println(message);
 		
-		send(brokerSocket, "LOGIN" + "credentials");
+		send(brokerSocket, "LOGIN" + " " + "credentials");
 		message = receive(brokerSocket);
-		System.out.println(message);
+		logger.info(message);
 		
 		send(brokerSocket, "CERTIFY");
 		message = receive(brokerSocket);
-		System.out.println(message);
+		logger.info(message);
 		
-		send(brokerSocket, "CERTIFY-REQUIREMENTS-OFFER");
+		send(brokerSocket, "CERTIFY-REQUIREMENTS-OFFER" + " -i=" + userIdentity + " -pk=" + getPublicKey() + " -ipAddr=" + getIpAddress());
 		message = receive(brokerSocket);
-		System.out.println(message);
+		logger.info(message);
 		
 		send(brokerSocket, "CLOSE");
 		message = receive(brokerSocket);
-		System.out.println(message);
+		logger.info(message);
 	}
 }

@@ -43,6 +43,8 @@ public abstract class Servent extends Thread
 	@Override
 	public void run()
 	{
+		logger.info("Initializing services..");
+		logger.info("(1/3) ipAddress/port " + ipAddress + "/" + port);
 		startListening();
 	}
 	
@@ -51,27 +53,32 @@ public abstract class Servent extends Thread
 		boolean closingSignal = false;
 		try
 		{
+			logger.info("(2/3) binding port to socket");
 			passiveSocket = new ServerSocket(port);
+			logger.info("(2/3) socket binded");
 		}
 		catch (IOException e)
 		{
 			e.printStackTrace();
 		}
+		logger.info("(3/3) listening started");
+		logger.info("services up and running");
 		while(closingSignal == false)
 		{
 			try
 			{
 				Socket activeSocket = passiveSocket.accept();
-				Servent.this.logger.info("Connection " + activeSocket.getPort() + "/" + activeSocket.getInetAddress().getHostAddress() + " is established");
+				Servent.this.logger.info("Connection " + activeSocket.getInetAddress().getHostAddress() + "/" + activeSocket.getPort() + " is established");
 				new Thread(new Runnable()
 				{
 					@Override
 					public void run()
 					{
-						Servent.this.logger.info("Connection " + activeSocket.getPort() + "/" + activeSocket.getInetAddress().getHostAddress() + " is being handled");						
+						Servent.this.logger.info("Connection " + activeSocket.getInetAddress().getHostAddress() + "/" + activeSocket.getPort() + " is being handled");						
 						Servent.this.onReceiveIncomingConnection(activeSocket);
-						Servent.this.logger.info("Connection " + activeSocket.getPort() + "/" + activeSocket.getInetAddress().getHostAddress() + " is safe closed");
+						Servent.this.logger.info("Connection " + activeSocket.getInetAddress().getHostAddress() + "/" + activeSocket.getPort() + " is safe closing");
 						Servent.this.safeCloseConnection(activeSocket); // FIXME : Razvan
+						Servent.this.logger.info("Connection " + activeSocket.getInetAddress().getHostAddress() + "/" + activeSocket.getPort() + " is closed");
 					}
 				}).start();
 			}
@@ -174,6 +181,16 @@ public abstract class Servent extends Thread
 	public String getPrivateKey()
 	{
 		return privateKey;
+	}
+
+	public String getIpAddress()
+	{
+		return ipAddress;
+	}
+
+	public int getPort()
+	{
+		return port;
 	}
 
 }

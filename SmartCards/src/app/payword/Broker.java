@@ -27,7 +27,10 @@ public class Broker extends Servent
 	@Override
 	public void onReceiveIncomingConnection(Socket client)
 	{
+		// FIXME : must have a max time wait !
+		logger.info("Waiting initial message!");
 		String initialMessage = receive(client);
+		logger.info(initialMessage);
 		switch (initialMessage)
 		{
 		case "HELLO-User":
@@ -37,6 +40,7 @@ public class Broker extends Servent
 			handleVendor(client);
 			break;
 		default:
+			logger.info("Bad initial message!");
 			break;
 		}
 		
@@ -50,7 +54,7 @@ public class Broker extends Servent
 		String command = "";
 		String arguments = "";
 		
-		send(user, "Hello! Broker here, LOGIN please!");
+		send(user, "HELLO broker here, LOGIN please!");
 		
 		while(!command.equals("CLOSE"))
 		{
@@ -58,11 +62,11 @@ public class Broker extends Servent
 			if(message.contains(" "))
 			{
 				command   = message.substring(0, message.indexOf(" "));
-				arguments = message.substring(message.indexOf(" "));
+				arguments = message.substring(message.indexOf(" ") + 1);
 			}
 			else
 				command = message;
-
+			logger.info(message);
 			switch (command)
 			{
 			//
@@ -77,13 +81,13 @@ public class Broker extends Servent
 			// Certification
 			//
 			case "CERTIFY":
-				send(user, "CERTIFY-REQUIREMENTS identity publicKey ipAddress");
+				send(user, "CERTIFY-REQUIREMENTS -i=identity -pk=publicKey -ipAddr=ipAddress");
 				break;
 			case "CERTIFY-REQUIREMENTS-OFFER":
-				String userIdentity = "";
-				String userPublicKey = "";
-				String userIpAddress = "";
-				String creditCardNumber = "";
+				String userIdentity = arguments.substring(arguments.indexOf("-i=") + 3, arguments.indexOf(" ", arguments.indexOf("-i=")));
+				String userPublicKey = arguments.substring(arguments.indexOf("-pk=") + 3, arguments.indexOf(" ", arguments.indexOf("-pk=")));
+				String userIpAddress = arguments.substring(arguments.indexOf("-ipAddr=") + 8);
+				String creditCardNumber = "4412 1234 0099 2134";
 				Certificate certificate = new Certificate(
 						identity, 
 						getPublicKey(), 

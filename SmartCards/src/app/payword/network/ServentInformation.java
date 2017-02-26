@@ -28,4 +28,14 @@ public class ServentInformation
 	{
 		this.ipAddress = ipAddress;
 	}
+	
+	@Override
+	public String toString()
+	{
+		StringBuilder sb = new StringBuilder();
+		sb.append(ipAddress);
+		sb.append("/");
+		sb.append(port);
+		return sb.toString();
+	}
 }
