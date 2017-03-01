@@ -11,7 +11,7 @@ public class Vendor extends Servent
 
 	public Vendor()
 	{
-		super(Logger.getLogger("Vendor"), "", 1);
+		super(Logger.getLogger("Vendor"), "", "", 1);
 	}
 
 	@Override

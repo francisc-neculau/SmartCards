@@ -1,25 +1,31 @@
 package app.payword.network;
 
-import java.security.interfaces.RSAPublicKey;
+import java.security.PublicKey;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import app.payword.crypto.CryptoFacade;
 
 public class ServentIdentity
 {
 	private String identityNumber;
 	private int port;
 	private String ipAddress;
-	private RSAPublicKey rsaPublicKey;
+	private PublicKey publicKey;
 	
-	public ServentIdentity(String identityNumber, String ipAddress, int port, RSAPublicKey rsaPublicKey)
+	public ServentIdentity(String identityNumber, String ipAddress, int port, PublicKey rsaPublicKey)
 	{
 		this(identityNumber, ipAddress, port);
-		this.rsaPublicKey = rsaPublicKey;
+		this.publicKey = rsaPublicKey;
 	}
 
 	public ServentIdentity(String identityNumber, String ipAddress, int port)
 	{
 		this.identityNumber = identityNumber;
-		this.ipAddress = ipAddress;
-		this.port = port;
+		this.ipAddress      = ipAddress;
+		this.port           = port;
 	}
 	
 	public String getIdentityNumber()
@@ -37,9 +43,62 @@ public class ServentIdentity
 		return ipAddress;
 	}
 	
-	public RSAPublicKey getRsaPublicKey()
+	public PublicKey getPublicKey()
 	{
-		return rsaPublicKey;
+		return publicKey;
+	}
+	
+	public void setPublicKey(PublicKey publicKey)
+	{
+		this.publicKey = publicKey;
+	}
+	
+	public static String encodedPublicKey(PublicKey publicKey)
+	{
+		return CryptoFacade.encodePublicKey(publicKey);
+	}
+	
+	public String getEncodedPublicKey()
+	{
+		return CryptoFacade.encodePublicKey(publicKey);
+	}
+	
+	public static PublicKey decodePublicKey(String encodePublicKey)
+	{
+		return CryptoFacade.decodePublicKey(encodePublicKey);
+	}
+	
+	public static String encodeServentIdentity(ServentIdentity serventIdentiy)
+	{
+		StringBuilder sb = new StringBuilder();
+		sb.append("{");
+		sb.append(serventIdentiy.getIdentityNumber());
+		sb.append("}{");
+		sb.append(serventIdentiy.getIpAddress());
+		sb.append("}{");
+		sb.append(serventIdentiy.getPort());
+		sb.append("}");
+		if(serventIdentiy.getPublicKey() != null)
+			sb.append("{" + CryptoFacade.encodePublicKey(serventIdentiy.getPublicKey()) + "}");
+		return sb.toString();
+	}
+	
+	public static ServentIdentity decodeServentIdentity(String encodedServentIdentiy)
+	{
+		ServentIdentity serventIdentiy = null;
+		
+		Pattern pattern = Pattern.compile("[A-Za-z0-9\\.]{1,}");
+		Matcher matcher = pattern.matcher(encodedServentIdentiy);
+		
+		final List<String> matches = new ArrayList<>();
+	    while (matcher.find())
+	        matches.add(matcher.group(0));
+	
+		if(matches.size() == 4)
+			serventIdentiy = new ServentIdentity(matches.get(0), matches.get(1), new Integer(matches.get(2)), CryptoFacade.decodePublicKey(matches.get(3)));
+		else
+			serventIdentiy = new ServentIdentity(matches.get(0), matches.get(1), new Integer(matches.get(2)));
+		return serventIdentiy;
 	}
 	
 	@Override
@@ -50,7 +109,7 @@ public class ServentIdentity
 		sb.append("/");
 		sb.append(port);
 		sb.append("/");
-		sb.append(rsaPublicKey);
+		sb.append(publicKey);
 		return sb.toString();
 	}
 }

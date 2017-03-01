@@ -25,7 +25,7 @@ public abstract class Servent extends Thread
 	private RSAPrivateKey privateKey;
 
 	private ServerSocket passiveSocket;
-	private Socket activeSocket;
+	// private Socket activeSocket; maybe maintain a list of active sockets
 
 	private final String ipAddress;
 	private final int port;
@@ -34,7 +34,7 @@ public abstract class Servent extends Thread
 
 	public final Logger logger;
 
-	public Servent(Logger logger, String ipAddress, int port)
+	public Servent(Logger logger, String identityNumber, String ipAddress, int port)
 	{
 		this.logger    = logger;
 		this.ipAddress = ipAddress;
@@ -45,7 +45,7 @@ public abstract class Servent extends Thread
 		this.publicKey  = (RSAPublicKey)keys.get("publicKey");
 		this.privateKey = (RSAPrivateKey)keys.get("privateKey");
 		this.logger.info("Public Key : " + publicKey.toString());
-		String identityNumber = "123";//CryptoFacade.getInstance().generateRandomNumber(Integer.toString(port));
+		// FIXME: CryptoFacade.getInstance().generateRandomNumber(Integer.toString(port));
 		this.logger.info("IdentityNumber : " + identityNumber);
 
 		this.ownIdentity = new ServentIdentity(identityNumber, this.ipAddress, this.port, this.publicKey);

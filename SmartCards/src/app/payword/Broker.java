@@ -1,21 +1,25 @@
 package app.payword;
 
 import java.net.Socket;
-import java.sql.Date;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 
-import app.payword.crypto.CryptoFacade;
 import app.payword.network.Servent;
+import app.payword.network.ServentIdentity;
 
 public class Broker extends Servent
 {
-	private String identity;
+	private Map<ServentIdentity, Certificate> registeredUsers;
 
 	public Broker()
 	{
-		super(Logger.getLogger("Broker"), "127.0.0.2", 6790);
+		super(Logger.getLogger("Broker"), "100", "127.0.0.2", 6790);
+		registeredUsers = new HashMap<>();
 	}
 
 	public static void main(String[] args)
@@ -70,40 +74,36 @@ public class Broker extends Servent
 			logger.info(message);
 			switch (command)
 			{
-			//
-			// Login
-			//
-			case "LOGIN" :
-				send(user, "LOGIN-SUCCESS");
-				break;
-			case "":
-				break;
-			//
-			// Certification
-			//
-			case "CERTIFY":
-				send(user, "CERTIFY-REQUIREMENTS -in=identityNumber -pubk=publicKey -ipAddr=ipAddress");
-				break;
-			case "CERTIFY-REQUIREMENTS-OFFER":
-				String userIdentityNumber = arguments.substring(arguments.indexOf("-in=") + 3, arguments.indexOf(" ", arguments.indexOf("-in=")));
-				String userPublicKey      = arguments.substring(arguments.indexOf("-pubk=") + 3, arguments.indexOf(" ", arguments.indexOf("-pubk=")));
-				String userIpAddress      = arguments.substring(arguments.indexOf("-ipAddr=") + 8);
-				String creditCardNumber   = "4412 1234 0099 2134";
-				Certificate certificate   = new Certificate(identity, getPublicKey().toString(), userIdentityNumber, userPublicKey, userIpAddress, creditCardNumber, new Date(12937107481L));
-				String certificateHash      = CryptoFacade.getInstance().generateHash(certificate.toString());
-				String certificateSignature = CryptoFacade.getInstance().generateSignature(certificateHash, getPrivateKey());
-				send(user, "CERTIFICATE" + " " + certificate + " " + certificateSignature);
-				break;
-			//
-			// Closing
-			//
-			case "CLOSE":
-				// Some safe closing functions
-				send(user, "CLOSE-OK");
-				break;
-			default:
-				send(user, "ERROR command not recognised");
-				break;
+				case "LOGIN" :
+					send(user, "LOGIN-SUCCESS" + " " + getOwnIdentity().getEncodedPublicKey());
+					break;
+				case "":
+					break;
+				case "GET-CERTIFY":
+					send(user, "CERTIFY-REQUIREMENTS identityNumber ipAddress portNumber publicKey");
+					break;
+				case "CERTIFY-REQUIREMENTS-OFFER":
+					// Check the user has allready a certificate ? maybe further actions
+					ServentIdentity userIdentity    = ServentIdentity.decodeServentIdentity(arguments);
+					Certificate     userCertificate = new Certificate(getOwnIdentity(), userIdentity, "4412 1234 0099 2134", generateExpirationDate());
+					String certificateSignature     = userCertificate.generateCryptographicSignature(getPrivateKey());
+					
+					logger.info("Received user identity : " + userIdentity.toString());
+					logger.info("Generating certificate for user " + userIdentity.getIdentityNumber() + " :");
+					logger.info(userCertificate.toString());
+					logger.info("Signing certificate for user "    + userIdentity.getIdentityNumber() + " :");
+					logger.info(certificateSignature);
+					registeredUsers.put(userIdentity, userCertificate);
+
+					send(user, "CERTIFICATE" + " " + userCertificate.getEncodedCertificate() + " " + certificateSignature);
+					logger.info("Certificate and signature are sent for user " + userIdentity.getIdentityNumber());
+					break;
+				case "CLOSE":
+					send(user, "CLOSE-OK");
+					break;
+				default:
+					send(user, "ERROR command not recognised");
+					break;
 			}
 		}
 	}
@@ -111,6 +111,14 @@ public class Broker extends Servent
 	private void handleVendor(Socket vendor)
 	{
 		
+	}
+	
+	private String generateExpirationDate()
+	{
+		// FIXME : This should be somewhere in time 
+		Timestamp ts = new Timestamp(System.currentTimeMillis());
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
+		return sdf.format(ts);
 	}
 
 }
