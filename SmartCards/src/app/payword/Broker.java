@@ -9,6 +9,7 @@ import java.util.Map;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 
+import app.payword.network.Protocol;
 import app.payword.network.Servent;
 import app.payword.network.ServentIdentity;
 
@@ -21,14 +22,14 @@ public class Broker extends Servent
 		super(Logger.getLogger("Broker"), "100", "127.0.0.2", 6790);
 		registeredUsers = new HashMap<>();
 	}
-
-	public static void main(String[] args)
-	{
-		BasicConfigurator.configure();
-		Broker broker = new Broker();
-		broker.start();
-	}
-
+	/*
+	 * TO-DO :
+	 * 	- 	Implement service that runs and checks expirations of Certificates.
+	 * 	  When it finds one, it tries to connect to the User and informs him that 
+	 * 	  his certificate is no longer valid.
+	 * 	    User must then obtain a new Certificate.
+	 */
+	
 	@Override
 	public void onReceiveIncomingConnection(Socket client)
 	{
@@ -38,10 +39,10 @@ public class Broker extends Servent
 		logger.info(initialMessage);
 		switch (initialMessage)
 		{
-		case "HELLO-User":
+		case Protocol.Command.helloFromUser :
 			handleUser(client);
 			break;
-		case "HELLO-Vendor":
+		case Protocol.Command.helloFromVendor:
 			handleVendor(client);
 			break;
 		default:
@@ -59,7 +60,7 @@ public class Broker extends Servent
 		String command = "";
 		String arguments = "";
 		
-		send(user, "HELLO broker here, LOGIN please!");
+		send(user, Protocol.Command.helloFromBroker);
 		
 		while(!command.equals("CLOSE"))
 		{
@@ -74,15 +75,10 @@ public class Broker extends Servent
 			logger.info(message);
 			switch (command)
 			{
-				case "LOGIN" :
-					send(user, "LOGIN-SUCCESS" + " " + getOwnIdentity().getEncodedPublicKey());
+				case Protocol.Command.certificateRequest :
+					send(user, Protocol.Command.certificateInformationsRequest + Protocol.Command.SEPARATOR + "identityNumber ipAddress portNumber publicKey");
 					break;
-				case "":
-					break;
-				case "GET-CERTIFY":
-					send(user, "CERTIFY-REQUIREMENTS identityNumber ipAddress portNumber publicKey");
-					break;
-				case "CERTIFY-REQUIREMENTS-OFFER":
+				case Protocol.Command.certificateInformationsOffer :
 					// Check the user has allready a certificate ? maybe further actions
 					ServentIdentity userIdentity    = ServentIdentity.decodeServentIdentity(arguments);
 					Certificate     userCertificate = new Certificate(getOwnIdentity(), userIdentity, "4412 1234 0099 2134", generateExpirationDate());
@@ -95,14 +91,14 @@ public class Broker extends Servent
 					logger.info(certificateSignature);
 					registeredUsers.put(userIdentity, userCertificate);
 
-					send(user, "CERTIFICATE" + " " + userCertificate.getEncodedCertificate() + " " + certificateSignature);
+					send(user, Protocol.Command.certificateOffer + Protocol.Command.SEPARATOR + userCertificate.encode() + " " + certificateSignature);
 					logger.info("Certificate and signature are sent for user " + userIdentity.getIdentityNumber());
 					break;
-				case "CLOSE":
-					send(user, "CLOSE-OK");
+				case Protocol.Command.goodbyeFromUser:
+					send(user, Protocol.Command.goodbyeFromBroker);
 					break;
 				default:
-					send(user, "ERROR command not recognised");
+					send(user, Protocol.Command.commandError);
 					break;
 			}
 		}
@@ -119,6 +115,13 @@ public class Broker extends Servent
 		Timestamp ts = new Timestamp(System.currentTimeMillis());
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
 		return sdf.format(ts);
+	}
+	
+	public static void main(String[] args)
+	{
+		BasicConfigurator.configure();
+		Broker broker = new Broker();
+		broker.start();
 	}
 
 }

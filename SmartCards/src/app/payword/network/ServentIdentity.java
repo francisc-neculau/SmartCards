@@ -109,7 +109,10 @@ public class ServentIdentity
 		sb.append("/");
 		sb.append(port);
 		sb.append("/");
-		sb.append(publicKey);
+		if(publicKey != null)
+			sb.append(publicKey);
+		else 
+			sb.append("{PublicKey-Not-Set}");
 		return sb.toString();
 	}
 }

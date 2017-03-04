@@ -7,11 +7,11 @@ import app.payword.network.ServentIdentity;
 
 public class Certificate
 {
-	private String brokerIdentity;
-	private String brokerPublicKey;
+	private String brokerIdentityNumber;
+	private String brokerEncodedPublicKey;
 	
-	private String userIdentity;
-	private String userPublicKey;
+	private String userIdentityNumber;
+	private String userEncodedPublicKey;
 	private String userIpAddress;
 	private String creditCardNumber;
 	
@@ -21,74 +21,90 @@ public class Certificate
 	{
 		this(brokerIdentity.getIdentityNumber(), brokerIdentity.getEncodedPublicKey(), userIdentity.getIdentityNumber(), userIdentity.getEncodedPublicKey(), userIdentity.getIpAddress(), creditCardNumber, expirationDate);
 	}
-	public Certificate(String brokerIdentity,String brokerPublicKey,String userIdentity,String userPublicKey,String userIpAddress,String creditCardNumber,String expirationDate)
+	public Certificate(String brokerIdentityNumber,String brokerPublicKey,String userIdentityNumber,String userPublicKey,String userIpAddress,String creditCardNumber,String expirationDate)
 	{
-		this.brokerIdentity = brokerIdentity;
-		this.brokerPublicKey = brokerPublicKey;
+		this.brokerIdentityNumber = brokerIdentityNumber;
+		this.brokerEncodedPublicKey      = brokerPublicKey;
 
-		this.userIdentity = userIdentity;
-		this.userPublicKey = userPublicKey;
-		this.userIpAddress = userIpAddress;
-		this.creditCardNumber = creditCardNumber;
+		this.userIdentityNumber = userIdentityNumber;
+		this.userEncodedPublicKey      = userPublicKey;
+		this.userIpAddress      = userIpAddress;
+		this.creditCardNumber   = creditCardNumber;
 
 		this.expirationDate = expirationDate;
 	}
 	
-	// encodare pe biti transformati in string 1 --> 001 24 --> 024 124 ---> 124
 	public String generateCryptographicSignature(PrivateKey privateKey)
 	{
 		String signature = CryptoFacade.getInstance().generateCryptographicSignature(getCertificateHash(), privateKey);
 		return signature;
 	}
+
+	public static boolean isCertificateAuthentic(Certificate certificate, String signature)
+	{
+		return true;
+	}
 	
 	public String getCertificateHash()
 	{
-		String certificateHash = CryptoFacade.getInstance().generateHash(this.getEncodedCertificate());
+		String certificateHash = CryptoFacade.getInstance().generateHash(this.encode());
 		return certificateHash;
 	}
 	
-	public String getEncodedCertificate()
+	public String encode()
 	{
-		return this.brokerIdentity + "-" + this.brokerPublicKey + "-" + this.userIdentity + "-" + this.userPublicKey + "-" + this.userIpAddress + "-" + this.creditCardNumber + "-" + this.expirationDate;
+		StringBuilder sb = new StringBuilder(); 
+		sb.append(brokerIdentityNumber);
+		sb.append("-");
+		sb.append(brokerEncodedPublicKey);
+		sb.append("-");
+		sb.append(userIdentityNumber);
+		sb.append("-");
+		sb.append(userEncodedPublicKey);
+		sb.append("-");
+		sb.append(userIpAddress);
+		sb.append("-");
+		sb.append(creditCardNumber);
+		sb.append("-");
+		sb.append(expirationDate);
+		return sb.toString();
 	}
 	
-	public static Certificate decodeCertificate(String encodedCertificate)
+	public static Certificate decode(String encoded)
 	{
-		String [] pieces = encodedCertificate.split("-");
+		String [] pieces = encoded.split("-");
 		
-		String brokerIdentity = pieces[0];
-		String brokerPublicKey = pieces[1];
-
-		String userIdentity = pieces[2];
-		String userPublicKey = pieces[3];
-		String userIpAddress = pieces[4];
+		String brokerIdentity   = pieces[0];
+		String brokerPublicKey  = pieces[1];
+		String userIdentity     = pieces[2];
+		String userPublicKey    = pieces[3];
+		String userIpAddress    = pieces[4];
 		String creditCardNumber = pieces[5];
-
-		String expirationDate = pieces[6];
+		String expirationDate   = pieces[6];
 		
-		Certificate result = new Certificate(brokerIdentity, brokerPublicKey, userIdentity, userPublicKey, userIpAddress, creditCardNumber, expirationDate);
+		Certificate decoded = new Certificate(brokerIdentity, brokerPublicKey, userIdentity, userPublicKey, userIpAddress, creditCardNumber, expirationDate);
 		
-		return result;
+		return decoded;
 	}
 
 	public String getBrokerIdentity()
 	{
-		return brokerIdentity;
+		return brokerIdentityNumber;
 	}
 
-	public String getBrokerPublicKey()
+	public String getBrokerEncodedPublicKey()
 	{
-		return brokerPublicKey;
+		return brokerEncodedPublicKey;
 	}
 
 	public String getUserIdentity()
 	{
-		return userIdentity;
+		return userIdentityNumber;
 	}
 
-	public String getUserPublicKey()
+	public String getUserEncodedPublicKey()
 	{
-		return userPublicKey;
+		return userEncodedPublicKey;
 	}
 
 	public String getUserIpAddress()
@@ -110,15 +126,15 @@ public class Certificate
 	public String toString()
 	{
 		StringBuilder sb = new StringBuilder();
-		sb.append(brokerIdentity);
+		sb.append(brokerIdentityNumber);
 		sb.append(" ");
-		sb.append(userIdentity);
+		sb.append(userIdentityNumber);
 		sb.append(" ");
 		sb.append(userIpAddress);
 		sb.append(" ");
-		sb.append(brokerPublicKey);
+		sb.append(brokerEncodedPublicKey);
 		sb.append(" ");
-		sb.append(userPublicKey);
+		sb.append(userEncodedPublicKey);
 		sb.append(" ");
 		sb.append(creditCardNumber);
 		sb.append(" ");

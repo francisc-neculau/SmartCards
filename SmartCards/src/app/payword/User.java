@@ -7,7 +7,7 @@ import java.security.spec.InvalidKeySpecException;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 
-import app.payword.crypto.CryptoFacade;
+import app.payword.network.Protocol;
 import app.payword.network.Servent;
 import app.payword.network.ServentIdentity;
 
@@ -15,21 +15,13 @@ public class User extends Servent
 {
 	private Certificate certificate;
 	private ServentIdentity brokerIdentity; // this identity should be validated
-											// by some sort of security provider
+	private ServentIdentity vendorIdentity; // by some sort of security provider
 
-	public User(ServentIdentity brokerInformation)
+	public User(ServentIdentity brokerIdentity, ServentIdentity... vendorsIdentities)
 	{
 		super(Logger.getLogger("User"), "200", "127.0.0.1", 6767);
-		this.brokerIdentity = brokerInformation;
-	}
-
-	public static void main(String[] args) throws InvalidKeySpecException, NoSuchAlgorithmException
-	{
-		BasicConfigurator.configure();
-		ServentIdentity brokerInformation = new ServentIdentity("123", "127.0.0.2", 6790);
-		User user = new User(brokerInformation);
-		user.start();
-		user.establishAccount();
+		this.brokerIdentity = brokerIdentity;
+		this.vendorIdentity = vendorsIdentities[0];
 	}
 
 	@Override
@@ -40,44 +32,97 @@ public class User extends Servent
 		 */
 	}
 
-	public void establishAccount()
+	public void obtainCertificate()
 	{
-		Socket brokerSocket = connectToServant(brokerIdentity, 4);
+		Socket brokerSocket = connectToServant(brokerIdentity);
+		String message      = "";
 
-		send(brokerSocket, "HELLO-User"/* + getOwnIdentity() */);
-		String message = receive(brokerSocket);
-		//logger.info(message);
-
-		send(brokerSocket, "LOGIN" + " " + "credentials");
+		send(brokerSocket, Protocol.Command.helloFromUser);
 		message = receive(brokerSocket);
-		String encodedPublicKey = message.substring(message.indexOf(" ") + 1);
-		brokerIdentity.setPublicKey(ServentIdentity.decodePublicKey(encodedPublicKey));
-		//logger.info(message);
-		//logger.info("Public key of broker is received and saved! " + brokerIdentity.getPublicKey().toString());
+
+
+		send(brokerSocket, Protocol.Command.certificateRequest);
+		message = receive(brokerSocket);
+		logger.info("Requesting certificate..");
+
+
+		send(brokerSocket,Protocol.Command.certificateInformationsOffer + Protocol.Command.SEPARATOR + ServentIdentity.encodeServentIdentity(getOwnIdentity()));
+		message = receive(brokerSocket);
+		logger.info("Certificate received (serialized form).");
+		logger.info("Deserializing Certificate..");
 		
-		send(brokerSocket, "GET-CERTIFY");
-		message = receive(brokerSocket);
-		//logger.info(message);
-
-		//logger.info("Sending own identity to the broker : " + ServentIdentity.encodeServentIdentity(getOwnIdentity()));
-		send(brokerSocket,"CERTIFY-REQUIREMENTS-OFFER" + " " + ServentIdentity.encodeServentIdentity(getOwnIdentity()));
-		message = receive(brokerSocket);
-		//logger.info(message);
-
-		// this stuff should go in the Certificate class. It must have te responsability to encode/decode itself
-		String certificateString = message.substring(message.indexOf(" ") + 1, message.lastIndexOf(" "));
-		certificate = Certificate.decodeCertificate(certificateString);
+		String encodedCertificate   = message.substring(message.indexOf(" ") + 1, message.lastIndexOf(" "));
 		String certificateSignature = message.substring(message.lastIndexOf(" ") + 1);
-		//logger.info("Certificate signature : " + certificateSignature);
-		logger.info("Certificate hash : " + CryptoFacade.getInstance().generateHash(certificate.toString()));
-		System.out.println("--"+certificate.toString()+"--");
-		if (CryptoFacade.getInstance().isSignatureAuthentic(certificateSignature, certificate.getCertificateHash(), brokerIdentity.getPublicKey()))
-			logger.info("Certificate is authentic");
+		certificate = Certificate.decode(encodedCertificate);
+		brokerIdentity.setPublicKey(ServentIdentity.decodePublicKey(certificate.getBrokerEncodedPublicKey()));
+		
+		logger.info("Certificate : " + certificate);
+		logger.info("Signature   : " + certificateSignature);
+		logger.info("Checking the certificate signature..");
+		if(Certificate.isCertificateAuthentic(certificate, certificateSignature))
+			logger.info("Certificate is authentic!");
 		else
-			logger.info("Certificate is not authentic");
-		send(brokerSocket, "CLOSE");
+			logger.info("Certificate is not authentic!");
+
+
+		send(brokerSocket, Protocol.Command.goodbyeFromUser);
 		message = receive(brokerSocket);
 		logger.info(message);
+
+		disconnectFromServant(brokerSocket);
 	}
 
+	public void simulatePayment()
+	{
+		Socket vendorSocket = connectToServant(brokerIdentity);
+		String message = "";
+
+		send(vendorSocket, Protocol.Command.helloFromUser);
+		message = receive(vendorSocket);
+
+		send(vendorSocket, Protocol.Command.productsCatalogueRequest);
+		message = receive(vendorSocket);
+
+		send(vendorSocket, Protocol.Command.productReservationRequest);
+		message = receive(vendorSocket);
+
+		send(vendorSocket, Protocol.Command.productReservationRequest);
+		message = receive(vendorSocket);
+		
+		send(vendorSocket, Protocol.Command.receiptRequest);
+		message = receive(vendorSocket);
+
+		send(vendorSocket, Protocol.Command.receiptAcknowleged);
+		message = receive(vendorSocket);
+
+		/*
+		 * Case of first Commitment of Day
+		 */
+		//# Compute Commitment and send it.
+		send(vendorSocket, Protocol.Command.commitmentOffer + Protocol.Command.SEPARATOR + "Commitment");
+		//# Here we should receive a request for the ChainRing
+		message = receive(vendorSocket);
+
+		//# Compute the ChainRing and send it!
+		send(vendorSocket, Protocol.Command.commitmentChainRingOffer + Protocol.Command.SEPARATOR + "Chain Ring");
+		//# Products Received here
+		message = receive(vendorSocket); 
+		
+		send(vendorSocket, Protocol.Command.goodbyeFromUser);
+		message = receive(vendorSocket);
+
+		disconnectFromServant(vendorSocket);
+	}
+
+	public static void main(String[] args) throws InvalidKeySpecException, NoSuchAlgorithmException
+	{
+		BasicConfigurator.configure();
+
+		ServentIdentity brokerIdentity = new ServentIdentity("100", "127.0.0.2", 6790);
+		ServentIdentity vendorIdentity = new ServentIdentity("300", "127.0.0.2", 6799);
+		
+		User user = new User(brokerIdentity, new ServentIdentity [] {vendorIdentity});
+		user.start();
+		user.obtainCertificate();
+	}
 }

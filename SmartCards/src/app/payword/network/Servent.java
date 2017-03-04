@@ -21,6 +21,7 @@ import app.payword.crypto.CryptoFacade;
  */
 public abstract class Servent extends Thread
 {
+	public static final Integer DEFAULT_NUMBER_OF_ATTEMPTS = 4;
 	private RSAPublicKey  publicKey;
 	private RSAPrivateKey privateKey;
 
@@ -51,28 +52,30 @@ public abstract class Servent extends Thread
 		this.ownIdentity = new ServentIdentity(identityNumber, this.ipAddress, this.port, this.publicKey);
 	}
 
-	public abstract void onReceiveIncomingConnection(Socket client);
+	public abstract void onReceiveIncomingConnection(Socket hostSocket);
 
-	private void safeCloseConnection(Socket client)
+	private void safeCloseConnection(Socket hostSocket)
 	{
+		Servent.this.logger.info("Connection " + hostSocket.getInetAddress().getHostAddress() + "/" + hostSocket.getPort() + " is safe closing");
 		try 
 		{
-			client.close();
+			hostSocket.close();
 		} 
 		catch (IOException e) 
 		{
-			Servent.this.logger.warn("Closing failed for the client : " + client.getInetAddress().getHostAddress() + "/" + client.getPort());
-			Servent.this.logger.info("Retry to close the connection in 5 seconds..");
+			Servent.this.logger.warn("Closing failed for host : " + hostSocket.getInetAddress().getHostAddress() + "/" + hostSocket.getPort());
+			Servent.this.logger.info("Retry to close the connection in 2 seconds..");
 			try 
 			{
-				Thread.sleep(5000);
-				safeCloseConnection(client);
+				Thread.sleep(2000);
+				safeCloseConnection(hostSocket);
 			} 
 			catch (InterruptedException e1) 
 			{
-				e1.printStackTrace();
+				logger.error(e1);
 			}
 		}
+		Servent.this.logger.info("Connection " + hostSocket.getInetAddress().getHostAddress() + "/" + hostSocket.getPort() + " is closed");
 	}
 
 	@Override
@@ -94,7 +97,7 @@ public abstract class Servent extends Thread
 		}
 		catch (IOException e)
 		{
-			e.printStackTrace();
+			logger.error(e);
 		}
 		logger.info("(3/3) listening started");
 		logger.info("services up and running");
@@ -111,18 +114,17 @@ public abstract class Servent extends Thread
 					{
 						Servent.this.logger.info("Connection " + activeSocket.getInetAddress().getHostAddress() + "/" + activeSocket.getPort() + " is being handled");						
 						Servent.this.onReceiveIncomingConnection(activeSocket);
-						Servent.this.logger.info("Connection " + activeSocket.getInetAddress().getHostAddress() + "/" + activeSocket.getPort() + " is safe closing");
 						Servent.this.safeCloseConnection(activeSocket);
-						Servent.this.logger.info("Connection " + activeSocket.getInetAddress().getHostAddress() + "/" + activeSocket.getPort() + " is closed");
+						
 					}
 				}).start();
 			}
 			catch (IOException e)
 			{
-				e.printStackTrace();
+				logger.error(e);
 			}
 			if(closingSignal)
-				break;
+				break; // FIXME : Handle all threads launched.. inform them that the master must close. Do not accept new connections !
 		}
 		try
 		{
@@ -130,7 +132,7 @@ public abstract class Servent extends Thread
 		}
 		catch (IOException e)
 		{
-			e.printStackTrace();
+			logger.error(e);
 		}
 		return;
 	}
@@ -144,7 +146,7 @@ public abstract class Servent extends Thread
 		}
 		catch (IOException e)
 		{
-			e.printStackTrace();
+			logger.error(e);
 		}
 	}
 
@@ -158,12 +160,17 @@ public abstract class Servent extends Thread
 		}
 		catch (IOException e)
 		{
-			e.printStackTrace();
+			logger.error(e);
 		}
 		
 		return message;
 	}
-
+	
+	protected Socket connectToServant(ServentIdentity serventIdentity)
+	{
+		return connectToServant(serventIdentity, DEFAULT_NUMBER_OF_ATTEMPTS);
+	}
+	
 	protected Socket connectToServant(ServentIdentity serventInformation, int numberOfAttempts)
 	{
 		logger.info("Establishing connection to " + serventInformation + " with max number of attempts : " + numberOfAttempts);
@@ -182,11 +189,9 @@ public abstract class Servent extends Thread
 			} catch (UnknownHostException e)
 			{
 				logger.error("Establishing connection failed!", e);
-				return null;
 			} catch (IOException e)
 			{
 				logger.error("Establishing connection failed!", e);
-				return null;
 			}
 			try
 			{
@@ -206,17 +211,14 @@ public abstract class Servent extends Thread
 		return servant;
 	}
 
+	protected void disconnectFromServant(Socket socket)
+	{
+		safeCloseConnection(socket);
+	}
+
 	public RSAPublicKey getPublicKey()
 	{
 		return publicKey;
-	}
-
-	public String getEncodedPublicKey()
-	{
-		StringBuilder sb = new StringBuilder();
-		for(Byte b : publicKey.getEncoded())
-			sb.append(b.toString());
-		return sb.toString();
 	}
 	
 	public RSAPrivateKey getPrivateKey()
