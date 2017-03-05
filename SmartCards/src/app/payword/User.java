@@ -23,18 +23,14 @@ public class User extends Servent
 	private ServentIdentity brokerIdentity; // this identity should be validated
 	private ServentIdentity vendorIdentity; // by some sort of security provider
 	
-	private Map<Integer, Commitment> centCommitmentMap;
-	private Map<Integer, Commitment> unitCommitmentMap;
-	
-	// 100 cents = 1 unit
+	private Map<Integer, Commitment> commitmentMap;
 	
 	public User(ServentIdentity brokerIdentity, ServentIdentity... vendorsIdentities)
 	{
 		super(Logger.getLogger("User"), 200, "127.0.0.1", 6767);
 		this.brokerIdentity = brokerIdentity;
 		this.vendorIdentity = vendorsIdentities[0];
-		this.centCommitmentMap = new HashMap<>();
-		this.unitCommitmentMap = new HashMap<>();
+		this.commitmentMap = new HashMap<>();
 	}
 
 	@Override
@@ -90,13 +86,16 @@ public class User extends Servent
 		disconnectFromServant(brokerSocket);
 	}
 
-	public void simulatePayment()
+	public void simulatePaymentI()
 	{
 		Socket vendorSocket = connectToServant(vendorIdentity);
+		if(vendorSocket == null)
+			return;
 		String message = "";
 
 		send(vendorSocket, Command.helloFromUser + Command.sep + getOwnIdentity().encode());
 		message = receive(vendorSocket);
+		ServentIdentity vendorIdentity = ServentIdentity.decode(message.substring(message.indexOf(" ") + 1));
 		
 		send(vendorSocket, Command.productsCatalogueRequest);
 		message = receive(vendorSocket);
@@ -106,7 +105,8 @@ public class User extends Servent
 		
 		send(vendorSocket, Command.receiptRequest);
 		message = receive(vendorSocket);
-		
+		Double totalAmount = Double.valueOf(message.substring(message.indexOf(" ") + 1));
+		Integer targetPaywordIndex = (int) (totalAmount * 100);
 		
 		send(vendorSocket, Command.receiptAcknowleged);
 		message = receive(vendorSocket);
@@ -116,10 +116,10 @@ public class User extends Servent
 		 * Case of first Commitment of Day
 		 */
 		//# Compute Commitment and send it.
-		List<String> paywordsList = CryptoFacade.getInstance().generateHashChain(getPrivateKey().toString(), 40);
+		List<String> paywordsList = CryptoFacade.getInstance().generateHashChain(getPrivateKey().toString(), 10000);
 		String  hashChainRoot   = paywordsList.get(0);
-		Integer hashChainLength = 40;
-		Double  chainRingValue  = 1.0;
+		Integer hashChainLength = 10000;
+		Double  chainRingValue  = 0.01;
 		Commitment commitment = new Commitment(vendorIdentity.getIdentityNumber(), certificate, hashChainRoot, generateDate(), hashChainLength, chainRingValue);
 		String signature = commitment.generateSignature(getPrivateKey());
 		send(vendorSocket, Command.commitmentOffer + Command.sep + commitment.encode() + Command.sep + signature);
@@ -127,7 +127,8 @@ public class User extends Servent
 		message = receive(vendorSocket);
 
 		//# Compute the ChainRing and send it!
-		send(vendorSocket, Command.commitmentPaywordOffer + Command.sep + "(" + paywordsList.get(12) + ", 12)");
+		String payword = "(" + paywordsList.get(targetPaywordIndex) + "," + targetPaywordIndex + ")";
+		send(vendorSocket, Command.commitmentPaywordOffer + Command.sep + payword);
 		//# Products Received here
 		message = receive(vendorSocket); 
 
@@ -147,6 +148,6 @@ public class User extends Servent
 		User user = new User(brokerIdentity, new ServentIdentity [] {vendorIdentity});
 		user.start();
 		user.obtainCertificate();
-		user.simulatePayment();
+		user.simulatePaymentI();
 	}
 }

@@ -11,6 +11,7 @@ import org.apache.log4j.Logger;
 
 import app.payword.model.Commitment;
 import app.payword.model.Product;
+import app.payword.model.Receipt;
 import app.payword.network.Protocol;
 import app.payword.network.Servent;
 import app.payword.network.ServentIdentity;
@@ -18,24 +19,24 @@ import app.payword.network.ServentIdentity;
 public class Vendor extends Servent
 {
 	private Map<Integer, ServentIdentity> identityMap;
-	private Map<Integer, Commitment> centCommitmentMap;
-	private Map<Integer, Commitment> unitCommitmentMap;
+	private Map<Integer, Commitment> commitmentMap;
 
-	private static List<Product> productsList;
+	private static List<Product> catalogue;
 
 	public Vendor()
 	{
 		super(Logger.getLogger("Vendor"), 300, "127.0.0.3", 6799);
 		this.identityMap   = new HashMap<>();
-		this.centCommitmentMap = new HashMap<>();
-		this.unitCommitmentMap = new HashMap<>();
+		this.commitmentMap = new HashMap<>();
+		// this.startWatchdogProcess();
 	}
 
 	static
 	{
-		productsList = new ArrayList<>();
-		productsList.add(new Product("apples", 12));
-		productsList.add(new Product("kiwi"  , 0.67));
+		catalogue = new ArrayList<>();
+		catalogue.add(new Product("apples" , 12.0 ));
+		catalogue.add(new Product("kiwi"   ,  0.67));
+		catalogue.add(new Product("avocado",  9.67));
 	}
 	
 	@Override
@@ -48,18 +49,19 @@ public class Vendor extends Servent
 
 		boolean isCommitmentExpired     = false;
 		boolean isCommitmentValueEnough = true;
-		boolean everythingIsOk = true;
+		boolean isPaywordValid = true;
+		boolean isPaywordEnough = false;
 		
-		boolean isCommitmentAvailable   = false;
 		boolean isCommitmentAuthentic   = false;
-		boolean isCertificateAtuthentic = false;
 		boolean needMorePaywords = false;
 		Integer identityNumber = null;
 		
 		String message   = "";
 		String command   = "";
 		String arguments = "";
-		
+		Receipt receipt = new Receipt();
+		Commitment commitment = null;
+
 		while(!closingSignal)
 		{
 			try
@@ -84,19 +86,20 @@ public class Vendor extends Servent
 						}
 						break;
 					case Protocol.Command.productsCatalogueRequest :
-						send(hostSocket, Protocol.Command.productsCatalogueOffer);
+						send(hostSocket, Protocol.Command.productsCatalogueOffer + Protocol.Command.sep + getCatalogue());
 						break;
 					case Protocol.Command.productReservationRequest :
+						receipt.addProduct(catalogue.get(Integer.valueOf(arguments)));
 						send(hostSocket, Protocol.Command.productReservationAccepted);
 						// if we do not have enough quantity of it..
 						// send(hostSocket, Protocol.Command.productReservationRejected);
 						break;
 					case Protocol.Command.receiptRequest :
-						send(hostSocket, Protocol.Command.receiptOffer);
+						send(hostSocket, Protocol.Command.receiptOffer + Protocol.Command.sep + receipt.getTotalAmount());
 						break;
 					case Protocol.Command.receiptAcknowleged :
 						{
-							if(!unitCommitmentMap.containsKey(identityNumber) || !centCommitmentMap.containsKey(identityNumber))
+							if(!commitmentMap.containsKey(identityNumber))
 								send(hostSocket, Protocol.Command.commitmentRequest);
 							else if (isCommitmentExpired)
 								send(hostSocket, Protocol.Command.commitmentExpiredRequestNewOne);
@@ -108,31 +111,44 @@ public class Vendor extends Servent
 						break;
 					case Protocol.Command.commitmentOffer :
 						{		
-							Commitment commitment = Commitment.decode(arguments.substring(0, arguments.lastIndexOf(" ")));
+							commitment = Commitment.decode(arguments.substring(0, arguments.lastIndexOf(" ")));
 							String     signature  = arguments.substring(arguments.lastIndexOf(" ") + 1);
 							isCommitmentAuthentic = Commitment.isSignatureAuthentic(commitment, signature, commitment.getUserCertificate().getUserEncodedPublicKey());
 							// check the signature of the Certificate. This requires that the Vendor obtains the brokers
 							// public key in a previous step
 							if(isCommitmentAuthentic)
 							{
-								if(commitment.isUnitType())
-									unitCommitmentMap.put(identityNumber, commitment);
-								else
-									centCommitmentMap.put(identityNumber, commitment);
+								commitmentMap.put(identityNumber, commitment);
 								send(hostSocket, Protocol.Command.commitmentPaywordRequest);
 							}
 							else
+							{
 								send(hostSocket, Protocol.Command.commitmentRejectedReceiptAborted + Protocol.Command.sep + "Commitment not accepted!");
+								receipt.clear();
+							}
 						}
 					break;
 					case Protocol.Command.commitmentPaywordOffer :
 						{
-							if(everythingIsOk)
-								send(hostSocket, Protocol.Command.commitmentPaywordAcceptedReceiptFinalized + Protocol.Command.sep + "Products");
-							else if(needMorePaywords)
-								send(hostSocket, Protocol.Command.commitmentPaywordAcceptedMoreNeeded + Protocol.Command.sep + "Amount");
+							String  paywordValue = arguments.substring(1, arguments.lastIndexOf(","));
+							Integer paywordIndex = Integer.valueOf(arguments.substring(arguments.lastIndexOf(",") + 1, arguments.indexOf(")")));
+							isPaywordValid = commitment.isPaywordValid(paywordValue, paywordIndex);
+							if(isPaywordValid)
+							{
+								Double amountReceived = commitment.processPayword(paywordValue, paywordIndex);
+			
+								if(receipt.coversCost(amountReceived))
+									send(hostSocket, Protocol.Command.commitmentPaywordAcceptedReceiptFinalized + Protocol.Command.sep + receipt);
+								else if(receipt.exceedsCost(amountReceived))
+									send(hostSocket, Protocol.Command.commitmentPaywordExceedsReceiptAborted);
+								else // Aici ar trebui sa tratam cazurile cu rest..
+									send(hostSocket, Protocol.Command.commitmentPaywordExceedsReceiptAborted);
+							}
 							else
+							{
 								send(hostSocket, Protocol.Command.commitmentPaywordRejectedReceiptAborted + Protocol.Command.sep + "Everything is aborted");
+								receipt.clear();
+							}
 						}
 						break;
 					case Protocol.Command.goodbyeFromUser:
@@ -154,8 +170,8 @@ public class Vendor extends Servent
 	public String getCatalogue()
 	{
 		StringBuilder sb = new StringBuilder();
-		sb.append(productsList.get(0));
-		sb.append(productsList.get(1));
+		for(int counter = 0; counter < catalogue.size(); counter++)
+			sb.append(counter + "::" + catalogue.get(counter) + "::" + catalogue.get(counter).getPrice());
 		return sb.toString();
 	}
 	

@@ -43,9 +43,9 @@ public class Protocol
 		public static final String commitmentPaywordRequest = "CPR";
 		public static final String commitmentPaywordOffer   = "CPO";
 		public static final String commitmentPaywordAcceptedReceiptFinalized = "CP-A-RF";
-		public static final String commitmentPaywordAcceptedMoreNeeded       = "CP-A-MN";
+		public static final String commitmentPaywordExceedsReceiptAborted    = "CP-E-RA";
 		public static final String commitmentPaywordRejectedReceiptAborted   = "CP-R-RA";
-
+		
 		
 		public static final String receiptRequest     = "RR";
 		public static final String receiptOffer       = "RO";

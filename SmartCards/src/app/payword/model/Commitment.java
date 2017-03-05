@@ -25,12 +25,18 @@ public class Commitment
 		this.currentDate     = currentDate;
 		this.hashChainLength = hashChainLength;
 		this.chainRingValue  = chainRingValue;
+		
+		this.lastPaywordValue = hashChainRoot;
+		this.lastPaywordIndex = 0;
 	}
 
-	public void setLastPaywordUsed(String payword, Integer index)
+	public Double processPayword(String payword, Integer index)
 	{
+		Double result = 0.0;
+		result = (index - lastPaywordIndex) * chainRingValue;
 		this.lastPaywordValue = payword;
 		this.lastPaywordIndex = index;
+		return result;
 	}
 	
 	public boolean isPaywordValid(String payword, Integer index)
@@ -51,12 +57,6 @@ public class Commitment
 				return false;
 		}
 		return true;
-	}
-	
-	public boolean isUnitType()
-	{
-		boolean result = ((chainRingValue - chainRingValue.intValue()) == 0.0);
-		return result;
 	}
 	
 	public static boolean isSignatureAuthentic(Commitment commitment, String signature, String encodedPublicKey)
