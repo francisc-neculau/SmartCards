@@ -10,25 +10,25 @@ import app.payword.crypto.CryptoFacade;
 
 public class ServentIdentity
 {
-	private String identityNumber;
-	private int port;
-	private String ipAddress;
+	private Integer   identityNumber;
+	private int       port;
+	private String    ipAddress;
 	private PublicKey publicKey;
 	
-	public ServentIdentity(String identityNumber, String ipAddress, int port, PublicKey rsaPublicKey)
+	public ServentIdentity(Integer identityNumber, String ipAddress, int port, PublicKey publicKey)
 	{
 		this(identityNumber, ipAddress, port);
-		this.publicKey = rsaPublicKey;
+		this.publicKey = publicKey;
 	}
 
-	public ServentIdentity(String identityNumber, String ipAddress, int port)
+	public ServentIdentity(Integer identityNumber, String ipAddress, int port)
 	{
 		this.identityNumber = identityNumber;
 		this.ipAddress      = ipAddress;
 		this.port           = port;
 	}
 	
-	public String getIdentityNumber()
+	public Integer getIdentityNumber()
 	{
 		return  identityNumber;
 	}
@@ -68,36 +68,36 @@ public class ServentIdentity
 		return CryptoFacade.decodePublicKey(encodePublicKey);
 	}
 	
-	public static String encodeServentIdentity(ServentIdentity serventIdentiy)
+	public String encode()
 	{
 		StringBuilder sb = new StringBuilder();
 		sb.append("{");
-		sb.append(serventIdentiy.getIdentityNumber());
+		sb.append(this.getIdentityNumber());
 		sb.append("}{");
-		sb.append(serventIdentiy.getIpAddress());
+		sb.append(this.getIpAddress());
 		sb.append("}{");
-		sb.append(serventIdentiy.getPort());
+		sb.append(this.getPort());
 		sb.append("}");
-		if(serventIdentiy.getPublicKey() != null)
-			sb.append("{" + CryptoFacade.encodePublicKey(serventIdentiy.getPublicKey()) + "}");
+		if(this.getPublicKey() != null)
+			sb.append("{" + CryptoFacade.encodePublicKey(this.getPublicKey()) + "}");
 		return sb.toString();
 	}
 	
-	public static ServentIdentity decodeServentIdentity(String encodedServentIdentiy)
+	public static ServentIdentity decode(String encoded)
 	{
 		ServentIdentity serventIdentiy = null;
 		
 		Pattern pattern = Pattern.compile("[A-Za-z0-9\\.]{1,}");
-		Matcher matcher = pattern.matcher(encodedServentIdentiy);
+		Matcher matcher = pattern.matcher(encoded);
 		
 		final List<String> matches = new ArrayList<>();
 	    while (matcher.find())
 	        matches.add(matcher.group(0));
 	
 		if(matches.size() == 4)
-			serventIdentiy = new ServentIdentity(matches.get(0), matches.get(1), new Integer(matches.get(2)), CryptoFacade.decodePublicKey(matches.get(3)));
+			serventIdentiy = new ServentIdentity(Integer.valueOf(matches.get(0)), matches.get(1), Integer.valueOf(matches.get(2)), CryptoFacade.decodePublicKey(matches.get(3)));
 		else
-			serventIdentiy = new ServentIdentity(matches.get(0), matches.get(1), new Integer(matches.get(2)));
+			serventIdentiy = new ServentIdentity(Integer.valueOf(matches.get(0)), matches.get(1), Integer.valueOf(matches.get(2)));
 		return serventIdentiy;
 	}
 	

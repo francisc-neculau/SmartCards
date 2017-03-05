@@ -1,4 +1,4 @@
-package app.payword;
+package app.payword.model;
 
 import java.security.PrivateKey;
 
@@ -7,10 +7,10 @@ import app.payword.network.ServentIdentity;
 
 public class Certificate
 {
-	private String brokerIdentityNumber;
+	private Integer brokerIdentityNumber;
 	private String brokerEncodedPublicKey;
 	
-	private String userIdentityNumber;
+	private Integer userIdentityNumber;
 	private String userEncodedPublicKey;
 	private String userIpAddress;
 	private String creditCardNumber;
@@ -21,31 +21,31 @@ public class Certificate
 	{
 		this(brokerIdentity.getIdentityNumber(), brokerIdentity.getEncodedPublicKey(), userIdentity.getIdentityNumber(), userIdentity.getEncodedPublicKey(), userIdentity.getIpAddress(), creditCardNumber, expirationDate);
 	}
-	public Certificate(String brokerIdentityNumber,String brokerPublicKey,String userIdentityNumber,String userPublicKey,String userIpAddress,String creditCardNumber,String expirationDate)
+	public Certificate(Integer brokerIdentityNumber,String brokerPublicKey,Integer userIdentityNumber,String userPublicKey,String userIpAddress,String creditCardNumber,String expirationDate)
 	{
-		this.brokerIdentityNumber = brokerIdentityNumber;
-		this.brokerEncodedPublicKey      = brokerPublicKey;
-
-		this.userIdentityNumber = userIdentityNumber;
-		this.userEncodedPublicKey      = userPublicKey;
+		this.brokerIdentityNumber   = brokerIdentityNumber;
+		this.brokerEncodedPublicKey = brokerPublicKey;
+		this.userIdentityNumber   = userIdentityNumber;
+		this.userEncodedPublicKey = userPublicKey;
 		this.userIpAddress      = userIpAddress;
 		this.creditCardNumber   = creditCardNumber;
 
 		this.expirationDate = expirationDate;
 	}
 	
-	public String generateCryptographicSignature(PrivateKey privateKey)
+	public static boolean isSignatureAuthentic(Certificate certificate, String signature, String encodedPublicKey)
 	{
-		String signature = CryptoFacade.getInstance().generateCryptographicSignature(getCertificateHash(), privateKey);
+		boolean isAuthentic = CryptoFacade.getInstance().isSignatureAuthentic(certificate.generateHash(), signature, CryptoFacade.decodePublicKey(encodedPublicKey));
+		return isAuthentic;
+	}
+	
+	public String generateSignature(PrivateKey privateKey)
+	{
+		String signature = CryptoFacade.getInstance().generateCryptographicSignature(generateHash(), privateKey);
 		return signature;
 	}
 
-	public static boolean isCertificateAuthentic(Certificate certificate, String signature)
-	{
-		return true;
-	}
-	
-	public String getCertificateHash()
+	public String generateHash()
 	{
 		String certificateHash = CryptoFacade.getInstance().generateHash(this.encode());
 		return certificateHash;
@@ -74,20 +74,20 @@ public class Certificate
 	{
 		String [] pieces = encoded.split("-");
 		
-		String brokerIdentity   = pieces[0];
+		Integer brokerIdentityNumber = Integer.valueOf(pieces[0]);
 		String brokerPublicKey  = pieces[1];
-		String userIdentity     = pieces[2];
+		Integer userIdentityNumber = Integer.valueOf(pieces[2]);
 		String userPublicKey    = pieces[3];
 		String userIpAddress    = pieces[4];
 		String creditCardNumber = pieces[5];
 		String expirationDate   = pieces[6];
 		
-		Certificate decoded = new Certificate(brokerIdentity, brokerPublicKey, userIdentity, userPublicKey, userIpAddress, creditCardNumber, expirationDate);
+		Certificate decoded = new Certificate(brokerIdentityNumber, brokerPublicKey, userIdentityNumber, userPublicKey, userIpAddress, creditCardNumber, expirationDate);
 		
 		return decoded;
 	}
 
-	public String getBrokerIdentity()
+	public Integer getBrokerIdentityNumber()
 	{
 		return brokerIdentityNumber;
 	}
@@ -97,7 +97,7 @@ public class Certificate
 		return brokerEncodedPublicKey;
 	}
 
-	public String getUserIdentity()
+	public Integer getUserIdentityNumber()
 	{
 		return userIdentityNumber;
 	}
@@ -141,4 +141,5 @@ public class Certificate
 		sb.append(expirationDate);
 		return sb.toString();
 	}
+
 }

@@ -4,7 +4,7 @@ public class Protocol
 {
 	public static class Command
 	{
-		public static final String SEPARATOR = " ";
+		public static final String sep = " ";
 		
 		public static final String commandError = "COMMAND-ERROR";
 		
@@ -19,41 +19,37 @@ public class Protocol
 		public static final String loginFailure = "LOGIN-Failure";
 
 
-		public static final String certificateRequest = "EXCHANGE-PUBLIC-KEY-REQUEST";
-		public static final String certificateInformationsRequest    = "adsada2";
-		public static final String certificateInformationsOffer   = "adsaasasddada2";
-		public static final String certificateOffer = "adsaasdada2";
+		public static final String certificateInformationsRequest = "CrtIR";
+		public static final String certificateInformationsOffer   = "CrtIO";
+		public static final String certificateRequest = "CrtR";
+		public static final String certificateOffer   = "CrtO";
 
 
-		public static final String productsCatalogueRequest = "afsPURCHASE-REQUEST";
-		public static final String productsCatalogueOffer = "afsPURCHASE-REQUEST";
-		public static final String productReservationRequest = "afsPURCasdaHASE-REQUEST";
-		public static final String productReservationAccepted = "afsPURCasdaHASE-REQUESTasd";
-		public static final String productReservationRejected = "afsPURCasdaHASEasda-REQUESTasd";
+		public static final String productsCatalogueRequest = "PCR";
+		public static final String productsCatalogueOffer   = "PCO";
+		public static final String productReservationRequest  = "PRR";
+		public static final String productReservationAccepted = "PRA";
+		public static final String productReservationRejected = "PRRj";
 		
 		/*
 		 * ChainRing = PayWord
 		 */
-		public static final String commitmentRequest = "Commitment-REQUEST";
-		public static final String commitmentOffer = "Commitment-OFFER";
-		public static final String commitmentAccepted = "Commitment-OFFEadsaR";
-		public static final String commitmentRejectedReceiptAborted = "Commitasdadment-OFFEadsaR";
-		public static final String commitmentExpiredRequestNewOne = "requestnewOne";
-		public static final String commitmentValueNotEnoughRequestAdditionalOne = "asdassda";
-		public static final String commitmentChainRingRequest = "dn912n3f8n92";
-		public static final String commitmentChainRingOffer = "18hads98";
-		public static final String commitmentChainRingAcceptedReceiptFinalized = "123";
-		public static final String commitmentChainRingRejectedReceiptAborted = "0ij98h98h8g";
+		public static final String commitmentRequest  = "CR";
+		public static final String commitmentOffer    = "CO";
+		public static final String commitmentAccepted = "CA";
+		public static final String commitmentRejectedReceiptAborted = "CRRA";
+		public static final String commitmentExpiredRequestNewOne   = "CEx-RN";
+		public static final String commitmentValueNotEnoughRequestAdditionalOne = "CVNE-RA";
+		public static final String commitmentPaywordRequest = "CPR";
+		public static final String commitmentPaywordOffer   = "CPO";
+		public static final String commitmentPaywordAcceptedReceiptFinalized = "CP-A-RF";
+		public static final String commitmentPaywordAcceptedMoreNeeded       = "CP-A-MN";
+		public static final String commitmentPaywordRejectedReceiptAborted   = "CP-R-RA";
 
 		
-		public static final String receiptRequest = "adsa";
-		public static final String receiptOffer = "adsa";
-		public static final String receiptAcknowleged = "adsasdaa";
-		//public static final String receiptFinalized = "adsafa2";
-		//public static final String retryLastReceipt = "PURCHASE-REQUEST-Retry";
-		//public static final String receiptFinalConfirmationRequest = "PURCHASE-REQUEST";
-		public static final String receiptFinalizeRequest = "12PURCHASE-REQUEST";
-		// public static final String receiptAborted = "asda";
+		public static final String receiptRequest     = "RR";
+		public static final String receiptOffer       = "RO";
+		public static final String receiptAcknowleged = "RA";
 
 
 		public static final String goodbyeFromUser   = "GOODBYE-User";

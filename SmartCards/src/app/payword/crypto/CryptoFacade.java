@@ -161,12 +161,12 @@ public class CryptoFacade
 	/*
 	 * m = se mod n --> deci trebuie cheia publica
 	 */
-	public boolean isSignatureAuthentic(String signatureMessage, String message, PublicKey publicKey)
+	public boolean isSignatureAuthentic(String message, String messageSignature, PublicKey publicKey)
 	{
 		try
 		{
 			Signature signature = Signature.getInstance("SHA1withRSA");
-			byte[] signedBytes = fromFormattedBytesStringToBytes(signatureMessage);// .getBytes(globalCharset);
+			byte[] signedBytes = fromFormattedBytesStringToBytes(messageSignature);// .getBytes(globalCharset);
 			byte[] messageBytes = message.getBytes(globalCharset);
 
 			signature.initVerify((RSAPublicKey) publicKey);

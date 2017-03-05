@@ -8,6 +8,8 @@ import java.net.UnknownHostException;
 import java.security.interfaces.RSAKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -35,7 +37,7 @@ public abstract class Servent extends Thread
 
 	public final Logger logger;
 
-	public Servent(Logger logger, String identityNumber, String ipAddress, int port)
+	public Servent(Logger logger, Integer identityNumber, String ipAddress, int port)
 	{
 		this.logger    = logger;
 		this.ipAddress = ipAddress;
@@ -54,6 +56,14 @@ public abstract class Servent extends Thread
 
 	public abstract void onReceiveIncomingConnection(Socket hostSocket);
 
+	protected String generateDate()
+	{
+		// FIXME : This should be somewhere in time 
+		Timestamp ts = new Timestamp(System.currentTimeMillis());
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
+		return sdf.format(ts);
+	}
+	
 	private void safeCloseConnection(Socket hostSocket)
 	{
 		Servent.this.logger.info("Connection " + hostSocket.getInetAddress().getHostAddress() + "/" + hostSocket.getPort() + " is safe closing");
@@ -143,6 +153,7 @@ public abstract class Servent extends Thread
 		{
 			PrintStream output = new PrintStream(destination.getOutputStream());
 			output.println(message);
+			logger.info("SEND to " + destination.getInetAddress().getHostAddress() + "/" + destination.getPort() + " MESSAGE< " + message + " >");
 		}
 		catch (IOException e)
 		{
@@ -157,6 +168,7 @@ public abstract class Servent extends Thread
 		{
 			Scanner input = new Scanner(source.getInputStream());
 			message = input.nextLine();
+			logger.info("RECEIVED from " + source.getInetAddress().getHostAddress() + "/" + source.getPort() + " MESSAGE< " + message + " >");
 		}
 		catch (IOException e)
 		{
