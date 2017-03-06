@@ -8,6 +8,7 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 
 import app.payword.model.Certificate;
+import app.payword.model.Commitment;
 import app.payword.network.Protocol;
 import app.payword.network.Servent;
 import app.payword.network.ServentIdentity;
@@ -15,11 +16,13 @@ import app.payword.network.ServentIdentity;
 public class Broker extends Servent
 {
 	private Map<ServentIdentity, Certificate> registeredUsers;
+	private Map<String, Boolean> commitmentProcessedMap;
 
 	public Broker()
 	{
 		super(Logger.getLogger("Broker"), 100, "127.0.0.2", 6790);
 		registeredUsers = new HashMap<>();
+		commitmentProcessedMap = new HashMap<>();
 	}
 	/*
 	 * TO-DO :
@@ -71,7 +74,7 @@ public class Broker extends Servent
 			}
 			else
 				command = message;
-			logger.info("received : " + message);
+//			logger.info("received : " + message);
 			switch (command)
 			{
 				case Protocol.Command.certificateRequest : 
@@ -105,7 +108,61 @@ public class Broker extends Servent
 	
 	private void handleVendor(Socket vendor)
 	{
+		// FIXME : define some sort of timer for expiration of session
+		// FIXME : check for bad formatted messages
+		String message   = "";
+		String command   = "";
+		String arguments = "";
 		
+		send(vendor, Protocol.Command.helloFromBroker);
+		
+		while(true)
+		{
+			message = receive(vendor);
+			if(message.contains(" "))
+			{
+				command   = message.substring(0, message.indexOf(" "));
+				arguments = message.substring(message.indexOf(" ") + 1);
+			}
+			else
+				command = message;
+//					logger.info("received : " + message);
+			switch (command)
+			{
+				case Protocol.Command.paywordRedeemRequest:
+					send(vendor, Protocol.Command.paywordRedeemAccept);
+					break;
+				
+				/*
+				 * 	Receive the paywords from the Vendor
+				 */
+				case Protocol.Command.paywordSendReceipt:
+					String[] receiptArguments = arguments.split(Protocol.Command.sep);
+					
+					
+					Commitment commitment = Commitment.decode(receiptArguments[0]); 
+					if(!commitmentProcessedMap.containsKey(receiptArguments[1]) )
+					{
+						if(commitment.isPaywordValid(receiptArguments[1], Integer.parseInt(receiptArguments[2])))
+						{
+							commitmentProcessedMap.put(receiptArguments[1], true);
+						}
+					}
+					break;
+					
+				case Protocol.Command.paywordSendReceiptEndSignal:
+					send(vendor, Protocol.Command.paywordAcknowlewdgeReceiptEndSignal);
+					break;
+					
+				case Protocol.Command.goodbyeFromVendor:
+					send(vendor,Protocol.Command.goodbyeFromBroker);
+					return;
+				
+				default:
+					send(vendor, Protocol.Command.commandError);
+					break;
+			}
+		}
 	}
 	
 	public static void main(String[] args)

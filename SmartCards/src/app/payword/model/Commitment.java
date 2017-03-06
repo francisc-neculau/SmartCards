@@ -14,8 +14,8 @@ public class Commitment
 	private Integer hashChainLength;
 	private Double  chainRingValue;
 
-	private String  lastPaywordValue;
-	private Integer lastPaywordIndex;
+	private String  lastPaywordValue;	// cl	
+	private Integer lastPaywordIndex;	// l
 
 	public Commitment(Integer vendorIdentityNumber, Certificate userCertificate, String hashChainRoot, String currentDate, Integer hashChainLength, Double chainRingValue)
 	{
@@ -140,9 +140,19 @@ public class Commitment
 		return chainRingValue;
 	}
 	
+	public String getLastPaywordValue() {
+		return lastPaywordValue;
+	}
+
+	public Integer getLastPaywordIndex() {
+		return lastPaywordIndex;
+	}
+	
 	@Override
 	public String toString()
 	{
 		return (vendorIdentityNumber + " " + userCertificate + " " + hashChainRoot + " " + currentDate + " " + hashChainLength + " " + chainRingValue);
 	}
+
+
 }

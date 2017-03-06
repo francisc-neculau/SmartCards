@@ -1,5 +1,10 @@
 package app.payword;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,13 +27,18 @@ public class Vendor extends Servent
 	private Map<Integer, Commitment> commitmentMap;
 
 	private static List<Product> catalogue;
+	
+	private ServentIdentity brokerIdentity; // this identity should be validated
+	private File signalFile = new File("resources/signal.txt");
 
-	public Vendor()
+	public Vendor(ServentIdentity brokerIdentity)
 	{
 		super(Logger.getLogger("Vendor"), 300, "127.0.0.3", 6799);
 		this.identityMap   = new HashMap<>();
 		this.commitmentMap = new HashMap<>();
-		// this.startWatchdogProcess();
+		
+		this.brokerIdentity = brokerIdentity;
+		this.startWatchdogProcess();
 	}
 
 	static
@@ -37,6 +47,78 @@ public class Vendor extends Servent
 		catalogue.add(new Product("apples" , 12.0 ));
 		catalogue.add(new Product("kiwi"   ,  0.67));
 		catalogue.add(new Product("avocado",  9.67));
+	}
+	
+	/*
+	 * functie care se conecteaza la broker si trimite la broker lista de commitmenturi
+	 * brokerul le verifica si trimite un acknowledge ca banii s-au virat
+	 */
+	public void redeemPaywords()
+	{
+		logger.info("Start sending...");
+		Socket brokerSocket = connectToServant(brokerIdentity);
+		send(brokerSocket, Protocol.Command.helloFromVendor);
+		
+		String message = receive(brokerSocket); // receive the hello message from Broker
+		send(brokerSocket, Protocol.Command.paywordRedeemRequest);
+		message	= receive(brokerSocket); // receive the accept redeem message from Broker
+		
+		for(Map.Entry<Integer, Commitment> entry : commitmentMap.entrySet())
+		{
+			send(brokerSocket, Protocol.Command.paywordSendReceipt + Protocol.Command.sep + entry.getValue().encode() + Protocol.Command.sep 
+						+ entry.getValue().getLastPaywordValue() + Protocol.Command.sep + entry.getValue().getLastPaywordIndex());
+		}
+		
+		send(brokerSocket,Protocol.Command.paywordSendReceiptEndSignal);
+		message = receive(brokerSocket); // receive the acknowledgment for the finishing of the payword requests
+		
+		send(brokerSocket,Protocol.Command.goodbyeFromVendor);
+		message = receive(brokerSocket); // receive the goodbye from broker
+		logger.info("End sending!");
+	}
+	
+	/**
+	 *  Starts the watchdog thread that listens the shared file
+	 */
+	public void startWatchdogProcess()
+	{
+		new Thread(new Runnable() {
+			
+			@Override
+			public void run() 
+			{
+				synchronized(signalFile)
+				{
+					try 
+					{
+						BufferedReader reader = new BufferedReader(new FileReader(signalFile));
+						String signal = reader.readLine();
+						
+						while(signal.equalsIgnoreCase("0"))
+						{
+							reader.close();
+							Thread.sleep(5000);
+							
+							reader = new BufferedReader(new FileReader(signalFile));
+							signal = reader.readLine();
+						}
+						
+						reader.close();
+						// if arrives here, it means that the day is over
+						redeemPaywords();
+					} 
+					catch (IOException e) 
+					{
+						e.printStackTrace();
+					} 
+					catch (InterruptedException e) 
+					{
+						e.printStackTrace();
+					}
+				}
+				
+			}
+		}).start();
 	}
 	
 	@Override
@@ -178,7 +260,8 @@ public class Vendor extends Servent
 	public static void main(String[] args)
 	{
 		BasicConfigurator.configure();
-		Vendor broker = new Vendor();
+		ServentIdentity brokerIdentity = new ServentIdentity(100, "127.0.0.2", 6790);
+		Vendor broker = new Vendor(brokerIdentity);
 		broker.start();
 	}
 

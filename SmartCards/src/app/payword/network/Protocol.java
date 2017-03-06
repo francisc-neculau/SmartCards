@@ -55,5 +55,15 @@ public class Protocol
 		public static final String goodbyeFromUser   = "GOODBYE-User";
 		public static final String goodbyeFromBroker = "GOODBYE-Broker";
 		public static final String goodbyeFromVendor = "GOODBYE-Vendor";
+		
+		/*
+		 * 	Redeem Paywords
+		 */
+		public static final String paywordRedeemRequest		= "REQUEST-Payword";
+		public static final String paywordRedeemAccept		= "ACCEPT-Payword";
+		public static final String paywordSendReceipt		= "RECEIPT-Payword";
+		
+		public static final String paywordSendReceiptEndSignal 			= "RECEIPT-END-Payword";
+		public static final String paywordAcknowlewdgeReceiptEndSignal 	= "RECEIPT-END-ACK-Payword";
 	}
 }
