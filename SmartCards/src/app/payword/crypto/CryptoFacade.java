@@ -128,9 +128,6 @@ public class CryptoFacade
 	 */
 	public String generateCryptographicSignature(String message, PrivateKey privateKey)
 	{
-		/*
-		 * s = md mod n
-		 */
 		Signature signature;
 		try
 		{
@@ -158,9 +155,6 @@ public class CryptoFacade
 		return message;
 	}
 
-	/*
-	 * m = se mod n --> deci trebuie cheia publica
-	 */
 	public boolean isSignatureAuthentic(String message, String messageSignature, PublicKey publicKey)
 	{
 		try
@@ -191,7 +185,7 @@ public class CryptoFacade
 	}
 
 	/*
-	 * SHA-1
+	 * SHA-1 hash
 	 */
 	public String generateHash(String... pieces)
 	{
@@ -293,42 +287,3 @@ public class CryptoFacade
 				+ new String(((RSAPublicKey) publicKey).getPublicExponent().toString()));
 	}
 }
-
-
-/*
- * convert SHA-1 hash to String
- */
-// public static String convertToString(byte[] data)
-// {
-// StringBuffer buf = new StringBuffer();
-// for(byte bit: data)
-// buf.append(bit);
-//
-// return buf.toString();
-// }
-/*
- * Not fucking sure
- */
-// public String generateRandom(String seed)
-// {
-// try
-// {
-// return (new SecureRandom(seed.getBytes(globalCharset))).toString();
-// }
-// catch (UnsupportedEncodingException e)
-// {
-// e.printStackTrace();
-// }
-//
-// return null;
-// }
-/*
- * convert a byte String into a byte array
- * 
- * public static Byte[] convertStringToByteArray(String bytes) { List<Byte>
- * resultList = new ArrayList<>(); for( int index = 0; index <
- * bytes.length(); index++) { String s = "" + bytes.charAt(index);
- * resultList.add((byte) Byte.decode(s)); }
- * 
- * return resultList.toArray(new Byte[0]); }
- */

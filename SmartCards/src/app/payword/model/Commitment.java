@@ -17,6 +17,8 @@ public class Commitment
 	private String  lastPaywordValue;	// cl	
 	private Integer lastPaywordIndex;	// l
 
+	private String digitalSignature;
+
 	public Commitment(Integer vendorIdentityNumber, Certificate userCertificate, String hashChainRoot, String currentDate, Integer hashChainLength, Double chainRingValue)
 	{
 		this.vendorIdentityNumber = vendorIdentityNumber;
@@ -28,15 +30,23 @@ public class Commitment
 		
 		this.lastPaywordValue = hashChainRoot;
 		this.lastPaywordIndex = 0;
+		
+		// The Certificate should be signed after instantiation.
+		this.digitalSignature = "";
 	}
 
 	public Double processPayword(String payword, Integer index)
 	{
 		Double result = 0.0;
 		result = (index - lastPaywordIndex) * chainRingValue;
+		setLastPaywordUsed(payword, index);
+		return result;
+	}
+	
+	public void setLastPaywordUsed(String payword, Integer index)
+	{
 		this.lastPaywordValue = payword;
 		this.lastPaywordIndex = index;
-		return result;
 	}
 	
 	public boolean isPaywordValid(String payword, Integer index)
@@ -59,16 +69,16 @@ public class Commitment
 		return true;
 	}
 	
-	public static boolean isSignatureAuthentic(Commitment commitment, String signature, String encodedPublicKey)
+	public boolean isSignatureAuthentic(String encodedPublicKey)
 	{
-		boolean isAuthentic = CryptoFacade.getInstance().isSignatureAuthentic(commitment.generateHash(), signature, CryptoFacade.decodePublicKey(encodedPublicKey));
+		boolean isAuthentic = CryptoFacade.getInstance().isSignatureAuthentic(this.generateHash(), this.digitalSignature, CryptoFacade.decodePublicKey(encodedPublicKey));
 		return isAuthentic;	
 	}
 
-	public String generateSignature(PrivateKey privateKey)
+	public void generateDigitalSignature(PrivateKey privateKey)
 	{
 		String signature = CryptoFacade.getInstance().generateCryptographicSignature(generateHash(), privateKey);
-		return signature;
+		digitalSignature = signature;
 	}
 
 	public String generateHash()
@@ -76,7 +86,7 @@ public class Commitment
 		String hash = CryptoFacade.getInstance().generateHash(this.encode());
 		return hash;
 	}
-	
+
 	public String encode()
 	{
 		StringBuilder sb = new StringBuilder();
@@ -91,22 +101,26 @@ public class Commitment
 		sb.append(hashChainLength);
 		sb.append("--");
 		sb.append(chainRingValue);
+		sb.append("--");
+		sb.append(digitalSignature);
 		return sb.toString();
 	}
 	
 	public static Commitment decode(String encoded)
 	{
 		String [] pieces = encoded.split("--");
-		
+
 		Integer vendorIdentityNumber = Integer.valueOf(pieces[0]);
 		Certificate userCertificate  = Certificate.decode(pieces[1]);
 		String hashChainRoot    = pieces[2];
 		String currentDate      = pieces[3];
 		Integer hashChainLength = Integer.valueOf(pieces[4]);
 		Double chainRingValue  = Double.valueOf(pieces[5]);
-		
+		String digitalSignature = pieces[6];
+
 		Commitment decoded = new Commitment(vendorIdentityNumber, userCertificate, hashChainRoot, currentDate, hashChainLength, chainRingValue);
-		
+		decoded.setDigitalSignature(digitalSignature);
+
 		return decoded;
 	}
 
@@ -146,6 +160,11 @@ public class Commitment
 
 	public Integer getLastPaywordIndex() {
 		return lastPaywordIndex;
+	}
+	
+	private void setDigitalSignature(String digitalSignature)
+	{
+		this.digitalSignature = digitalSignature;
 	}
 	
 	@Override

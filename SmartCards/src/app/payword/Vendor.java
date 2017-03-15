@@ -2,7 +2,6 @@ package app.payword;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.Socket;
@@ -17,9 +16,10 @@ import org.apache.log4j.Logger;
 import app.payword.model.Commitment;
 import app.payword.model.Product;
 import app.payword.model.Receipt;
-import app.payword.network.Protocol;
+import app.payword.network.Protocol.Command;
 import app.payword.network.Servent;
 import app.payword.network.ServentIdentity;
+import app.payword.util.PaywordConfiguration;
 
 public class Vendor extends Servent
 {
@@ -28,12 +28,13 @@ public class Vendor extends Servent
 
 	private static List<Product> catalogue;
 	
-	private ServentIdentity brokerIdentity; // this identity should be validated
-	private File signalFile = new File("resources/signal.txt");
-
+	private ServentIdentity brokerIdentity;
+	private Logger logger;
+	
 	public Vendor(ServentIdentity brokerIdentity)
 	{
-		super(Logger.getLogger("Vendor"), 300, "127.0.0.3", 6799);
+		super(PaywordConfiguration.VENDOR_LOGGER_NAME, PaywordConfiguration.VENDOR_IDENTITY_NUMBER, PaywordConfiguration.VENDOR_IP_ADDRESS, PaywordConfiguration.VENDOR_PORT_NUMBER);
+		this.logger = Logger.getLogger(PaywordConfiguration.VENDOR_LOGGER_NAME);
 		this.identityMap   = new HashMap<>();
 		this.commitmentMap = new HashMap<>();
 		
@@ -48,73 +49,66 @@ public class Vendor extends Servent
 		catalogue.add(new Product("kiwi"   ,  0.67));
 		catalogue.add(new Product("avocado",  9.67));
 	}
-	
-	/*
-	 * functie care se conecteaza la broker si trimite la broker lista de commitmenturi
-	 * brokerul le verifica si trimite un acknowledge ca banii s-au virat
-	 */
+
 	public void redeemPaywords()
 	{
 		logger.info("Start sending...");
 		Socket brokerSocket = connectToServant(brokerIdentity);
-		send(brokerSocket, Protocol.Command.helloFromVendor);
+		send(brokerSocket, Command.helloFromVendor);
 		
 		String message = receive(brokerSocket); // receive the hello message from Broker
-		send(brokerSocket, Protocol.Command.paywordRedeemRequest);
+		send(brokerSocket, Command.paywordRedeemRequest);
 		message	= receive(brokerSocket); // receive the accept redeem message from Broker
 		
 		for(Map.Entry<Integer, Commitment> entry : commitmentMap.entrySet())
 		{
-			send(brokerSocket, Protocol.Command.paywordSendReceipt + Protocol.Command.sep + entry.getValue().encode() + Protocol.Command.sep 
-						+ entry.getValue().getLastPaywordValue() + Protocol.Command.sep + entry.getValue().getLastPaywordIndex());
+			send(brokerSocket, Command.paywordSendReceipt + Command.sep + entry.getValue().encode() + Command.sep 
+						+ entry.getValue().getLastPaywordValue() + Command.sep + entry.getValue().getLastPaywordIndex());
 		}
 		
-		send(brokerSocket,Protocol.Command.paywordSendReceiptEndSignal);
+		send(brokerSocket,Command.paywordSendReceiptEndSignal);
 		message = receive(brokerSocket); // receive the acknowledgment for the finishing of the payword requests
 		
-		send(brokerSocket,Protocol.Command.goodbyeFromVendor);
+		send(brokerSocket,Command.goodbyeFromVendor);
 		message = receive(brokerSocket); // receive the goodbye from broker
 		logger.info("End sending!");
 	}
-	
-	/**
-	 *  Starts the watchdog thread that listens the shared file
-	 */
+
 	public void startWatchdogProcess()
 	{
-		new Thread(new Runnable() {
-			
+		new Thread(new Runnable()
+		{
 			@Override
 			public void run() 
 			{
-				synchronized(signalFile)
+				String signalFilePath = "resources/signal.txt";
+				FileReader fr;
+				BufferedReader br;
+				try 
 				{
-					try 
+					fr = new FileReader(new File(signalFilePath));
+					br = new BufferedReader(fr);
+					String line = br.readLine();
+
+					if(line.contains("0"))
 					{
-						BufferedReader reader = new BufferedReader(new FileReader(signalFile));
-						String signal = reader.readLine();
-						
-						while(signal.equalsIgnoreCase("0"))
-						{
-							reader.close();
-							Thread.sleep(5000);
-							
-							reader = new BufferedReader(new FileReader(signalFile));
-							signal = reader.readLine();
-						}
-						
-						reader.close();
-						// if arrives here, it means that the day is over
-						redeemPaywords();
-					} 
-					catch (IOException e) 
-					{
-						e.printStackTrace();
-					} 
-					catch (InterruptedException e) 
-					{
-						e.printStackTrace();
+						Vendor.this.logger.info("watchdog process - start redeem paywords");
+						Vendor.this.redeemPaywords();
+						Vendor.this.logger.info("watchdog process - end redeem paywords");
 					}
+
+					Thread.sleep(5000);
+
+					br.close();
+					fr.close();
+				} 
+				catch (IOException e) 
+				{
+					e.printStackTrace();
+				} 
+				catch (InterruptedException e) 
+				{
+					e.printStackTrace();
 				}
 				
 			}
@@ -127,15 +121,11 @@ public class Vendor extends Servent
 		/*
 		 * Incoming requests will occur only from Users (clients).
 		 */
-		boolean closingSignal = false;
+		boolean isFinished = false;
 
 		boolean isCommitmentExpired     = false;
 		boolean isCommitmentValueEnough = true;
-		boolean isPaywordValid = true;
-		boolean isPaywordEnough = false;
 		
-		boolean isCommitmentAuthentic   = false;
-		boolean needMorePaywords = false;
 		Integer identityNumber = null;
 		
 		String message   = "";
@@ -144,7 +134,7 @@ public class Vendor extends Servent
 		Receipt receipt = new Receipt();
 		Commitment commitment = null;
 
-		while(!closingSignal)
+		while(!isFinished)
 		{
 			try
 			{
@@ -159,85 +149,88 @@ public class Vendor extends Servent
 
 				switch (command)
 				{
-					case Protocol.Command.helloFromUser :
+					case Command.helloFromUser :
 						{
 							ServentIdentity userIdentity = ServentIdentity.decode(arguments);
 							identityMap.put(userIdentity.getIdentityNumber(), userIdentity);
 							identityNumber = userIdentity.getIdentityNumber();
-							send(hostSocket, Protocol.Command.helloFromVendor + Protocol.Command.sep + getOwnIdentity().encode());
+							send(hostSocket, Command.helloFromVendor + Command.sep + getOwnIdentity().encode());
 						}
 						break;
-					case Protocol.Command.productsCatalogueRequest :
-						send(hostSocket, Protocol.Command.productsCatalogueOffer + Protocol.Command.sep + getCatalogue());
+					case Command.productsCatalogueRequest :
+						send(hostSocket, Command.productsCatalogueOffer + Command.sep + getCatalogue());
 						break;
-					case Protocol.Command.productReservationRequest :
+					case Command.productReservationRequest :
 						receipt.addProduct(catalogue.get(Integer.valueOf(arguments)));
-						send(hostSocket, Protocol.Command.productReservationAccepted);
+						send(hostSocket, Command.productReservationAccepted);
 						// if we do not have enough quantity of it..
-						// send(hostSocket, Protocol.Command.productReservationRejected);
+						// send(hostSocket, Command.productReservationRejected);
 						break;
-					case Protocol.Command.receiptRequest :
-						send(hostSocket, Protocol.Command.receiptOffer + Protocol.Command.sep + receipt.getTotalAmount());
+					case Command.receiptRequest :
+						send(hostSocket, Command.receiptOffer + Command.sep + receipt.getTotalAmount());
 						break;
-					case Protocol.Command.receiptAcknowleged :
+					case Command.receiptAcknowleged :
 						{
-							if(!commitmentMap.containsKey(identityNumber))
-								send(hostSocket, Protocol.Command.commitmentRequest);
-							else if (isCommitmentExpired)
-								send(hostSocket, Protocol.Command.commitmentExpiredRequestNewOne);
-							else if(!isCommitmentValueEnough)
-								send(hostSocket, Protocol.Command.commitmentValueNotEnoughRequestAdditionalOne + Protocol.Command.sep + " ");
+							if(commitmentMap.containsKey(identityNumber))
+							{
+								if (isCommitmentExpired)
+									send(hostSocket, Command.commitmentExpiredRequestNewOne);
+								else if(!isCommitmentValueEnough)
+									send(hostSocket, Command.commitmentValueNotEnoughRequestAdditionalOne + Command.sep + " ");
+								else
+								{
+									commitment = commitmentMap.get(identityNumber);
+									send(hostSocket, Command.commitmentPaywordRequest);
+								}
+							}
 							else
-								send(hostSocket, Protocol.Command.commitmentPaywordRequest); // !! Attention, next step must complete with success otherwise ABORTbreak;
+								send(hostSocket, Command.commitmentRequest);
 						}
 						break;
-					case Protocol.Command.commitmentOffer :
+					case Command.commitmentOffer :
 						{		
 							commitment = Commitment.decode(arguments.substring(0, arguments.lastIndexOf(" ")));
-							String     signature  = arguments.substring(arguments.lastIndexOf(" ") + 1);
-							isCommitmentAuthentic = Commitment.isSignatureAuthentic(commitment, signature, commitment.getUserCertificate().getUserEncodedPublicKey());
-							// check the signature of the Certificate. This requires that the Vendor obtains the brokers
+							// check the signature of the Certificate. 
+							// This requires that the Vendor obtains the brokers
 							// public key in a previous step
-							if(isCommitmentAuthentic)
+							if(commitment.isSignatureAuthentic(commitment.getUserCertificate().getUserEncodedPublicKey()))
 							{
 								commitmentMap.put(identityNumber, commitment);
-								send(hostSocket, Protocol.Command.commitmentPaywordRequest);
+								send(hostSocket, Command.commitmentPaywordRequest);
 							}
 							else
 							{
-								send(hostSocket, Protocol.Command.commitmentRejectedReceiptAborted + Protocol.Command.sep + "Commitment not accepted!");
+								send(hostSocket, Command.commitmentRejectedReceiptAborted + Command.sep + "Commitment not accepted!");
 								receipt.clear();
 							}
 						}
 					break;
-					case Protocol.Command.commitmentPaywordOffer :
+					case Command.commitmentPaywordOffer :
 						{
 							String  paywordValue = arguments.substring(1, arguments.lastIndexOf(","));
 							Integer paywordIndex = Integer.valueOf(arguments.substring(arguments.lastIndexOf(",") + 1, arguments.indexOf(")")));
-							isPaywordValid = commitment.isPaywordValid(paywordValue, paywordIndex);
-							if(isPaywordValid)
+							if(commitment.isPaywordValid(paywordValue, paywordIndex))
 							{
 								Double amountReceived = commitment.processPayword(paywordValue, paywordIndex);
 			
 								if(receipt.coversCost(amountReceived))
-									send(hostSocket, Protocol.Command.commitmentPaywordAcceptedReceiptFinalized + Protocol.Command.sep + receipt);
-								else if(receipt.exceedsCost(amountReceived))
-									send(hostSocket, Protocol.Command.commitmentPaywordExceedsReceiptAborted);
-								else // Aici ar trebui sa tratam cazurile cu rest..
-									send(hostSocket, Protocol.Command.commitmentPaywordExceedsReceiptAborted);
+									send(hostSocket, Command.commitmentPaywordAcceptedReceiptFinalized + Command.sep + receipt);
+								else
+									send(hostSocket, Command.commitmentPaywordExceedsReceiptAborted);
 							}
 							else
 							{
-								send(hostSocket, Protocol.Command.commitmentPaywordRejectedReceiptAborted + Protocol.Command.sep + "Everything is aborted");
+								send(hostSocket, Command.commitmentPaywordRejectedReceiptAborted + Command.sep + "Everything is aborted");
 								receipt.clear();
 							}
 						}
 						break;
-					case Protocol.Command.goodbyeFromUser:
-						send(hostSocket, Protocol.Command.goodbyeFromVendor);
+					case Command.goodbyeFromUser:
+						send(hostSocket, Command.goodbyeFromVendor);
+						isFinished  = true;
 						break;
 					default:
-						send(hostSocket, Protocol.Command.commandError);
+						send(hostSocket, Command.commandError);
 						break;
 				}
 			} catch( Exception e)
@@ -260,7 +253,10 @@ public class Vendor extends Servent
 	public static void main(String[] args)
 	{
 		BasicConfigurator.configure();
-		ServentIdentity brokerIdentity = new ServentIdentity(100, "127.0.0.2", 6790);
+		ServentIdentity brokerIdentity = new ServentIdentity(
+				PaywordConfiguration.BROKER_IDENTITY_NUMBER, 
+				PaywordConfiguration.BROKER_IP_ADDRESS, 
+				PaywordConfiguration.BROKER_PORT_NUMBER);
 		Vendor broker = new Vendor(brokerIdentity);
 		broker.start();
 	}

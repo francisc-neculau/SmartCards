@@ -16,6 +16,8 @@ import app.payword.model.Commitment;
 import app.payword.network.Protocol.Command;
 import app.payword.network.Servent;
 import app.payword.network.ServentIdentity;
+import app.payword.util.DateUtil;
+import app.payword.util.PaywordConfiguration;
 
 public class User extends Servent
 {
@@ -24,10 +26,12 @@ public class User extends Servent
 	private ServentIdentity vendorIdentity; // by some sort of security provider
 	
 	private Map<Integer, Commitment> commitmentMap;
-	
+	private Logger logger;
+
 	public User(ServentIdentity brokerIdentity, ServentIdentity... vendorsIdentities)
 	{
-		super(Logger.getLogger("User"), 200, "127.0.0.1", 6767);
+		super(PaywordConfiguration.USER_LOGGER_NAME, PaywordConfiguration.USER_IDENTITY_NUMBER, PaywordConfiguration.USER_IP_ADDRESS, PaywordConfiguration.USER_PORT_NUMBER);
+		this.logger = Logger.getLogger(PaywordConfiguration.USER_LOGGER_NAME);
 		this.brokerIdentity = brokerIdentity;
 		this.vendorIdentity = vendorsIdentities[0];
 		this.commitmentMap = new HashMap<>();
@@ -72,7 +76,7 @@ public class User extends Servent
 		logger.info("Certificate : " + certificate);
 		logger.info("Signature   : " + certificateSignature);
 		logger.info("Checking the certificate signature..");
-		if(Certificate.isSignatureAuthentic(certificate, certificateSignature, brokerIdentity.getEncodedPublicKey()))
+		if(certificate.isSignatureAuthentic(brokerIdentity.getEncodedPublicKey()))
 			logger.info("Certificate is authentic!");
 		else
 			logger.info("Certificate is not authentic!");
@@ -86,13 +90,15 @@ public class User extends Servent
 		disconnectFromServant(brokerSocket);
 	}
 
-	public void simulatePaymentI()
+	public void simulateSingleFairPayment()
 	{
 		Socket vendorSocket = connectToServant(vendorIdentity);
 		if(vendorSocket == null)
 			return;
 		String message = "";
 
+		logger.info("--- SIMULATING SINGLE FAIR PAYMENT ---");
+		
 		send(vendorSocket, Command.helloFromUser + Command.sep + getOwnIdentity().encode());
 		message = receive(vendorSocket);
 		ServentIdentity vendorIdentity = ServentIdentity.decode(message.substring(message.indexOf(" ") + 1));
@@ -120,14 +126,56 @@ public class User extends Servent
 		String  hashChainRoot   = paywordsList.get(0);
 		Integer hashChainLength = 10000;
 		Double  chainRingValue  = 0.01;
-		Commitment commitment = new Commitment(vendorIdentity.getIdentityNumber(), certificate, hashChainRoot, generateDate(), hashChainLength, chainRingValue);
-		String signature = commitment.generateSignature(getPrivateKey());
-		send(vendorSocket, Command.commitmentOffer + Command.sep + commitment.encode() + Command.sep + signature);
+		Commitment commitment = new Commitment(vendorIdentity.getIdentityNumber(), certificate, hashChainRoot, DateUtil.getInstance().generateDate(), hashChainLength, chainRingValue);
+		commitment.generateDigitalSignature(getPrivateKey());
+		
+		commitmentMap.put(vendorIdentity.getIdentityNumber(), commitment);
+		
+		send(vendorSocket, Command.commitmentOffer + Command.sep + commitment.encode());
 		//# Here we should receive a request for the ChainRing
 		message = receive(vendorSocket);
 
 		//# Compute the ChainRing and send it!
 		String payword = "(" + paywordsList.get(targetPaywordIndex) + "," + targetPaywordIndex + ")";
+		send(vendorSocket, Command.commitmentPaywordOffer + Command.sep + payword);
+		//# Products Received here
+		message = receive(vendorSocket); 
+		commitment.setLastPaywordUsed(payword, targetPaywordIndex);
+		send(vendorSocket, Command.goodbyeFromUser);
+		message = receive(vendorSocket);
+		
+		disconnectFromServant(vendorSocket);
+	}
+
+	public void simulateMultipleFairPayment()
+	{
+		Socket vendorSocket = connectToServant(vendorIdentity);
+		if(vendorSocket == null)
+			return;
+		String message = "";
+
+		logger.info("--- SIMULATING MULTIPLE FAIR PAYMENT ---");
+		
+		send(vendorSocket, Command.helloFromUser + Command.sep + getOwnIdentity().encode());
+		message = receive(vendorSocket);
+		ServentIdentity vendorIdentity = ServentIdentity.decode(message.substring(message.indexOf(" ") + 1));
+		
+		send(vendorSocket, Command.productsCatalogueRequest);
+		message = receive(vendorSocket);
+		
+		send(vendorSocket, Command.productReservationRequest + Command.sep + "0");
+		message = receive(vendorSocket);
+		
+		send(vendorSocket, Command.receiptRequest);
+		message = receive(vendorSocket);
+		Double totalAmount = Double.valueOf(message.substring(message.indexOf(" ") + 1));
+		Integer targetPaywordIndex = (int) (totalAmount * 100);
+		
+		send(vendorSocket, Command.receiptAcknowleged);
+		message = receive(vendorSocket);
+		
+		//# Compute the ChainRing and send it!
+		String payword = "(";// + paywordsList.get(targetPaywordIndex) + "," + targetPaywordIndex + ")";
 		send(vendorSocket, Command.commitmentPaywordOffer + Command.sep + payword);
 		//# Products Received here
 		message = receive(vendorSocket); 
@@ -137,17 +185,57 @@ public class User extends Servent
 		
 		disconnectFromServant(vendorSocket);
 	}
-
+	
+	public void simulateForgeryPayment()
+	{
+		Socket vendorSocket = connectToServant(vendorIdentity);
+		if(vendorSocket == null)
+			return;
+		//String message = "";
+		
+		logger.info("--- SIMULATING FORGERY PAYMENT ---");
+		
+		
+		
+		disconnectFromServant(vendorSocket);
+	}
+	
 	public static void main(String[] args) throws InvalidKeySpecException, NoSuchAlgorithmException
 	{
 		BasicConfigurator.configure();
 
-		ServentIdentity brokerIdentity = new ServentIdentity(100, "127.0.0.2", 6790);
-		ServentIdentity vendorIdentity = new ServentIdentity(300, "127.0.0.2", 6799);
+		ServentIdentity brokerIdentity = new ServentIdentity(
+				PaywordConfiguration.BROKER_IDENTITY_NUMBER, 
+				PaywordConfiguration.BROKER_IP_ADDRESS, 
+				PaywordConfiguration.BROKER_PORT_NUMBER);
+		ServentIdentity vendorIdentity = new ServentIdentity(
+				PaywordConfiguration.VENDOR_IDENTITY_NUMBER, 
+				PaywordConfiguration.VENDOR_IP_ADDRESS, 
+				PaywordConfiguration.VENDOR_PORT_NUMBER);
 		
 		User user = new User(brokerIdentity, new ServentIdentity [] {vendorIdentity});
 		user.start();
-		user.obtainCertificate();
-		user.simulatePaymentI();
+//		user.obtainCertificate();
+//		
+//		user.simulateSingleFairPayment();
+//		// sleep between actions
+//		try
+//		{
+//			Thread.sleep(3000);
+//		} catch (InterruptedException e)
+//		{
+//			e.printStackTrace();
+//		}
+//		user.simulateSingleFairPayment();
+//		// sleep between actions
+//		try
+//		{
+//			Thread.sleep(3000);
+//		} catch (InterruptedException e)
+//		{
+//			e.printStackTrace();
+//		}
+//		 user.simulateForgeryPayment();
+		 user.end();
 	}
 }

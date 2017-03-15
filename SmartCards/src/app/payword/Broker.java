@@ -9,18 +9,20 @@ import org.apache.log4j.Logger;
 
 import app.payword.model.Certificate;
 import app.payword.model.Commitment;
-import app.payword.network.Protocol;
+import app.payword.network.Protocol.Command;
 import app.payword.network.Servent;
 import app.payword.network.ServentIdentity;
+import app.payword.util.DateUtil;
 
 public class Broker extends Servent
 {
 	private Map<ServentIdentity, Certificate> registeredUsers;
 	private Map<String, Boolean> commitmentProcessedMap;
-
+	private Logger logger;
 	public Broker()
 	{
-		super(Logger.getLogger("Broker"), 100, "127.0.0.2", 6790);
+		super("Broker", 100, "127.0.0.2", 6790);
+		logger = Logger.getLogger("Broker");
 		registeredUsers = new HashMap<>();
 		commitmentProcessedMap = new HashMap<>();
 	}
@@ -41,28 +43,25 @@ public class Broker extends Servent
 		logger.info(initialMessage);
 		switch (initialMessage)
 		{
-		case Protocol.Command.helloFromUser :
+		case Command.helloFromUser :
 			handleUser(client);
 			break;
-		case Protocol.Command.helloFromVendor:
+		case Command.helloFromVendor:
 			handleVendor(client);
 			break;
 		default:
 			logger.info("Bad initial message!");
 			break;
 		}
-		
 	}
 
 	private void handleUser(Socket user)
 	{
-		// FIXME : define some sort of timer for expiration of session
-		// FIXME : check for bad formatted messages
 		String message   = "";
 		String command   = "";
 		String arguments = "";
 		
-		send(user, Protocol.Command.helloFromBroker);
+		send(user, Command.helloFromBroker);
 		
 		while(true)
 		{
@@ -74,33 +73,31 @@ public class Broker extends Servent
 			}
 			else
 				command = message;
-//			logger.info("received : " + message);
 			switch (command)
 			{
-				case Protocol.Command.certificateRequest : 
-					send(user, Protocol.Command.certificateInformationsRequest + Protocol.Command.sep + "identityNumber ipAddress portNumber publicKey");
+				case Command.certificateRequest : 
+					send(user, Command.certificateInformationsRequest + Command.sep + "identityNumber ipAddress portNumber publicKey");
 					break;
-				case Protocol.Command.certificateInformationsOffer : 
+				case Command.certificateInformationsOffer : 
 					// Check the user has allready a certificate ? maybe further actions
 					ServentIdentity userIdentity    = ServentIdentity.decode(arguments);
-					Certificate     userCertificate = new Certificate(getOwnIdentity(), userIdentity, "4412 1234 0099 2134", generateDate());
-					String certificateSignature     = userCertificate.generateSignature(getPrivateKey());
+					Certificate     userCertificate = new Certificate(getOwnIdentity(), userIdentity, "4412 1234 0099 2134", DateUtil.getInstance().generateDate());
+					userCertificate.generateSignature(getPrivateKey());
 					
 					logger.info("Received user identity : " + userIdentity.toString());
 					logger.info("Generating certificate for user " + userIdentity.getIdentityNumber() + " :");
 					logger.info(userCertificate.toString());
 					logger.info("Signing certificate for user "    + userIdentity.getIdentityNumber() + " :");
-					logger.info(certificateSignature);
 					registeredUsers.put(userIdentity, userCertificate);
 
-					send(user, Protocol.Command.certificateOffer + Protocol.Command.sep + userCertificate.encode() + " " + certificateSignature);
+					send(user, Command.certificateOffer + Command.sep + userCertificate.encode());
 					logger.info("Certificate and signature are sent for user " + userIdentity.getIdentityNumber());
 					break;
-				case Protocol.Command.goodbyeFromUser :
-					send(user, Protocol.Command.goodbyeFromBroker);
+				case Command.goodbyeFromUser :
+					send(user, Command.goodbyeFromBroker);
 					return;
 				default:
-					send(user, Protocol.Command.commandError);
+					send(user, Command.commandError);
 					break;
 			}
 		}
@@ -114,7 +111,7 @@ public class Broker extends Servent
 		String command   = "";
 		String arguments = "";
 		
-		send(vendor, Protocol.Command.helloFromBroker);
+		send(vendor, Command.helloFromBroker);
 		
 		while(true)
 		{
@@ -129,15 +126,15 @@ public class Broker extends Servent
 //					logger.info("received : " + message);
 			switch (command)
 			{
-				case Protocol.Command.paywordRedeemRequest:
-					send(vendor, Protocol.Command.paywordRedeemAccept);
+				case Command.paywordRedeemRequest:
+					send(vendor, Command.paywordRedeemAccept);
 					break;
 				
 				/*
 				 * 	Receive the paywords from the Vendor
 				 */
-				case Protocol.Command.paywordSendReceipt:
-					String[] receiptArguments = arguments.split(Protocol.Command.sep);
+				case Command.paywordSendReceipt:
+					String[] receiptArguments = arguments.split(Command.sep);
 					
 					
 					Commitment commitment = Commitment.decode(receiptArguments[0]); 
@@ -150,16 +147,16 @@ public class Broker extends Servent
 					}
 					break;
 					
-				case Protocol.Command.paywordSendReceiptEndSignal:
-					send(vendor, Protocol.Command.paywordAcknowlewdgeReceiptEndSignal);
+				case Command.paywordSendReceiptEndSignal:
+					send(vendor, Command.paywordAcknowlewdgeReceiptEndSignal);
 					break;
 					
-				case Protocol.Command.goodbyeFromVendor:
-					send(vendor,Protocol.Command.goodbyeFromBroker);
+				case Command.goodbyeFromVendor:
+					send(vendor,Command.goodbyeFromBroker);
 					return;
 				
 				default:
-					send(vendor, Protocol.Command.commandError);
+					send(vendor, Command.commandError);
 					break;
 			}
 		}

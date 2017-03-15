@@ -17,6 +17,8 @@ public class Certificate
 	
 	private String expirationDate;
 
+	private String digitalSignature;
+	
 	public Certificate(ServentIdentity brokerIdentity, ServentIdentity userIdentity, String creditCardNumber, String expirationDate)
 	{
 		this(brokerIdentity.getIdentityNumber(), brokerIdentity.getEncodedPublicKey(), userIdentity.getIdentityNumber(), userIdentity.getEncodedPublicKey(), userIdentity.getIpAddress(), creditCardNumber, expirationDate);
@@ -25,17 +27,20 @@ public class Certificate
 	{
 		this.brokerIdentityNumber   = brokerIdentityNumber;
 		this.brokerEncodedPublicKey = brokerPublicKey;
-		this.userIdentityNumber   = userIdentityNumber;
-		this.userEncodedPublicKey = userPublicKey;
-		this.userIpAddress      = userIpAddress;
-		this.creditCardNumber   = creditCardNumber;
+		this.userIdentityNumber     = userIdentityNumber;
+		this.userEncodedPublicKey   = userPublicKey;
+		this.userIpAddress          = userIpAddress;
+		this.creditCardNumber       = creditCardNumber;
 
 		this.expirationDate = expirationDate;
+		
+		// The Certificate should be signed after instantiation.
+		this.digitalSignature = "";
 	}
 	
-	public static boolean isSignatureAuthentic(Certificate certificate, String signature, String encodedPublicKey)
+	public boolean isSignatureAuthentic(String encodedPublicKey)
 	{
-		boolean isAuthentic = CryptoFacade.getInstance().isSignatureAuthentic(certificate.generateHash(), signature, CryptoFacade.decodePublicKey(encodedPublicKey));
+		boolean isAuthentic = CryptoFacade.getInstance().isSignatureAuthentic(this.generateHash(), this.digitalSignature, CryptoFacade.decodePublicKey(encodedPublicKey));
 		return isAuthentic;
 	}
 	
@@ -67,6 +72,8 @@ public class Certificate
 		sb.append(creditCardNumber);
 		sb.append("-");
 		sb.append(expirationDate);
+		sb.append("-");
+		sb.append(digitalSignature);
 		return sb.toString();
 	}
 	
@@ -81,8 +88,10 @@ public class Certificate
 		String userIpAddress    = pieces[4];
 		String creditCardNumber = pieces[5];
 		String expirationDate   = pieces[6];
+		String digitalSignature = pieces[7];
 		
 		Certificate decoded = new Certificate(brokerIdentityNumber, brokerPublicKey, userIdentityNumber, userPublicKey, userIpAddress, creditCardNumber, expirationDate);
+		decoded.setDigitalSignature(digitalSignature);
 		
 		return decoded;
 	}
@@ -120,6 +129,11 @@ public class Certificate
 	public String getExpirationDate()
 	{
 		return expirationDate;
+	}
+	
+	private void setDigitalSignature(String digitalSignature)
+	{
+		this.digitalSignature = digitalSignature;
 	}
 	
 	@Override

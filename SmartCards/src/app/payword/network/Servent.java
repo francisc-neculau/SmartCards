@@ -4,12 +4,11 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.security.interfaces.RSAKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -30,16 +29,17 @@ public abstract class Servent extends Thread
 	private ServerSocket passiveSocket;
 	// private Socket activeSocket; maybe maintain a list of active sockets
 
+	private boolean closingSignal;
 	private final String ipAddress;
 	private final int port;
 
 	private ServentIdentity ownIdentity;
 
-	public final Logger logger;
+	private final Logger logger;
 
-	public Servent(Logger logger, Integer identityNumber, String ipAddress, int port)
+	public Servent(String childLoggerName, Integer identityNumber, String ipAddress, int port)
 	{
-		this.logger    = logger;
+		this.logger    = Logger.getLogger("Network-" + childLoggerName);
 		this.ipAddress = ipAddress;
 		this.port      = port;
 
@@ -48,23 +48,14 @@ public abstract class Servent extends Thread
 		this.publicKey  = (RSAPublicKey)keys.get("publicKey");
 		this.privateKey = (RSAPrivateKey)keys.get("privateKey");
 		this.logger.info("Public Key : " + publicKey.toString());
-		// FIXME: CryptoFacade.getInstance().generateRandomNumber(Integer.toString(port));
 		this.logger.info("IdentityNumber : " + identityNumber);
 
 		this.ownIdentity = new ServentIdentity(identityNumber, this.ipAddress, this.port, this.publicKey);
 	}
 
 	public abstract void onReceiveIncomingConnection(Socket hostSocket);
-
-	protected String generateDate()
-	{
-		// FIXME : This should be somewhere in time 
-		Timestamp ts = new Timestamp(System.currentTimeMillis());
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
-		return sdf.format(ts);
-	}
 	
-	private void safeCloseConnection(Socket hostSocket)
+	private void safeCloseSocket(Socket hostSocket)
 	{
 		Servent.this.logger.info("Connection " + hostSocket.getInetAddress().getHostAddress() + "/" + hostSocket.getPort() + " is safe closing");
 		try 
@@ -78,7 +69,7 @@ public abstract class Servent extends Thread
 			try 
 			{
 				Thread.sleep(2000);
-				safeCloseConnection(hostSocket);
+				safeCloseSocket(hostSocket);
 			} 
 			catch (InterruptedException e1) 
 			{
@@ -88,17 +79,45 @@ public abstract class Servent extends Thread
 		Servent.this.logger.info("Connection " + hostSocket.getInetAddress().getHostAddress() + "/" + hostSocket.getPort() + " is closed");
 	}
 
+	public void end()
+	{
+		try
+		{
+			Thread.sleep(2000);
+			logger.info("Ending of servent initiated. closingSignal and closing the passiveSocket");
+			for (int i = 0; i < 3; i++)
+			{
+				logger.info("begin in " + ((i+3)%3) + "..");
+				Thread.sleep(1000);
+			}
+		} catch (InterruptedException e1)
+		{
+			e1.printStackTrace();
+		}
+		try
+		{
+			logger.info("sending closingSignal and closing the passiveSocket");
+			closingSignal = false;
+			passiveSocket.close();
+		} catch (IOException e)
+		{
+			logger.error(e);
+		} finally
+		{
+		}
+	}
+	
 	@Override
 	public void run()
 	{
 		logger.info("Initializing services..");
-		logger.info("(1/3) ipAddress/port " + ipAddress + "/" + port);
 		startListening();
+		logger.info("All services terminated..");
 	}
 
 	private void startListening()
 	{
-		boolean closingSignal = false;
+		logger.info("(1/3) ipAddress/port " + ipAddress + "/" + port);
 		try
 		{
 			logger.info("(2/3) binding port to socket");
@@ -107,11 +126,12 @@ public abstract class Servent extends Thread
 		}
 		catch (IOException e)
 		{
-			logger.error(e);
+			logger.error("(2/3) socket binding failed!", e);
+			return;
 		}
 		logger.info("(3/3) listening started");
 		logger.info("services up and running");
-		while(closingSignal == false)
+		while(!closingSignal)
 		{
 			try
 			{
@@ -124,25 +144,27 @@ public abstract class Servent extends Thread
 					{
 						Servent.this.logger.info("Connection " + activeSocket.getInetAddress().getHostAddress() + "/" + activeSocket.getPort() + " is being handled");						
 						Servent.this.onReceiveIncomingConnection(activeSocket);
-						Servent.this.safeCloseConnection(activeSocket);
-						
+						Servent.this.safeCloseSocket(activeSocket);
 					}
 				}).start();
-			}
-			catch (IOException e)
+			}catch (SocketException e)
 			{
+				closingSignal = true;
+				logger.error(e);
+			}catch (IOException e)
+			{
+				// FIXME : Here we should include a max allowed number of error!
 				logger.error(e);
 			}
 			if(closingSignal)
-				break; // FIXME : Handle all threads launched.. inform them that the master must close. Do not accept new connections !
-		}
-		try
-		{
-			passiveSocket.close();
-		}
-		catch (IOException e)
-		{
-			logger.error(e);
+			{
+				logger.info("closingSignal received.");
+				logger.info("listening ended.");
+				return;
+				// FIXME : Handle all threads launched.. 
+				// inform them that the master must close
+				// Do not accept new connections !
+			}
 		}
 		return;
 	}
@@ -161,6 +183,7 @@ public abstract class Servent extends Thread
 		}
 	}
 
+	@SuppressWarnings("resource")
 	public String receive(Socket source)
 	{
 		String message = "";
@@ -225,7 +248,7 @@ public abstract class Servent extends Thread
 
 	protected void disconnectFromServant(Socket socket)
 	{
-		safeCloseConnection(socket);
+		safeCloseSocket(socket);
 	}
 
 	public RSAPublicKey getPublicKey()
