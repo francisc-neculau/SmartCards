@@ -64,7 +64,7 @@ public class User extends Servent
 		logger.info("Certificate received (serialized form).");
 		logger.info("Deserializing Certificate..");
 		
-		String encodedCertificate   = message.substring(message.indexOf(" ") + 1);
+		String encodedCertificate   = message.substring(message.indexOf(Command.sep) + 1);
 		certificate = Certificate.decode(encodedCertificate);
 		// FIXME : 
 		// 		This should not be retrieved from the 
@@ -99,7 +99,7 @@ public class User extends Servent
 		
 		send(vendorSocket, Command.helloFromUser + Command.sep + getOwnIdentity().encode());
 		message = receive(vendorSocket);
-		ServentIdentity vendorIdentity = ServentIdentity.decode(message.substring(message.indexOf(" ") + 1));
+		ServentIdentity vendorIdentity = ServentIdentity.decode(message.substring(message.indexOf(Command.sep) + 1));
 		
 		send(vendorSocket, Command.productsCatalogueRequest);
 		message = receive(vendorSocket);
@@ -109,7 +109,7 @@ public class User extends Servent
 		
 		send(vendorSocket, Command.receiptRequest);
 		message = receive(vendorSocket);
-		Double totalAmount = Double.valueOf(message.substring(message.indexOf(" ") + 1));
+		Double totalAmount = Double.valueOf(message.substring(message.indexOf(Command.sep) + 1));
 		Integer targetPaywordIndex = (int) (totalAmount * 100);
 		
 		send(vendorSocket, Command.receiptAcknowleged);
@@ -153,6 +153,11 @@ public class User extends Servent
 			return;
 		String message = "";
 
+		Integer targetPaywordIndex;
+		Double totalAmount;
+		Commitment commitment;
+		String payword;
+
 		logger.info("--- SIMULATING MULTIPLE FAIR PAYMENT ---");
 		
 		send(vendorSocket, Command.helloFromUser + Command.sep + getOwnIdentity().encode());
@@ -162,6 +167,9 @@ public class User extends Servent
 		send(vendorSocket, Command.productsCatalogueRequest);
 		message = receive(vendorSocket);
 		
+		/*
+		 * First purchase
+		 */
 		send(vendorSocket, Command.productReservationRequest + Command.sep + "0");
 		message = receive(vendorSocket);
 		
@@ -170,21 +178,45 @@ public class User extends Servent
 		
 		send(vendorSocket, Command.receiptRequest);
 		message = receive(vendorSocket);
-		Double totalAmount = Double.valueOf(message.substring(message.indexOf(" ") + 1));
-		Integer targetPaywordIndex = (int) (totalAmount * 100);
 		
-		Commitment commitment = commitmentMap.get(vendorIdentity.getIdentityNumber());
+		totalAmount        = Double.valueOf(message.substring(message.indexOf(" ") + 1));
+		targetPaywordIndex = (int) (totalAmount * 100);
+		commitment = commitmentMap.get(vendorIdentity.getIdentityNumber());
 		targetPaywordIndex += commitment.getLastPaywordIndex();
 		
 		send(vendorSocket, Command.receiptAcknowleged);
 		message = receive(vendorSocket);
 		
 		//# Compute the ChainRing and send it!
-		String payword = "(" + commitment.getPaywordsList().get(targetPaywordIndex) + "," + targetPaywordIndex + ")";
+		payword = "(" + commitment.getPaywordsList().get(targetPaywordIndex) + "," + targetPaywordIndex + ")";
 		send(vendorSocket, Command.commitmentPaywordOffer + Command.sep + payword);
 		//# Products Received here
 		message = receive(vendorSocket); 
 
+		
+		/*
+		 * Second purchase
+		 */
+		send(vendorSocket, Command.productReservationRequest + Command.sep + "2");
+		message = receive(vendorSocket);
+		
+		send(vendorSocket, Command.receiptRequest);
+		message = receive(vendorSocket);
+		
+		totalAmount        = Double.valueOf(message.substring(message.indexOf(" ") + 1));
+		targetPaywordIndex = (int) (totalAmount * 100);
+		commitment = commitmentMap.get(vendorIdentity.getIdentityNumber());
+		targetPaywordIndex += commitment.getLastPaywordIndex();
+		
+		send(vendorSocket, Command.receiptAcknowleged);
+		message = receive(vendorSocket);
+		
+		//# Compute the ChainRing and send it!
+		payword = "(" + commitment.getPaywordsList().get(targetPaywordIndex) + "," + targetPaywordIndex + ")";
+		send(vendorSocket, Command.commitmentPaywordOffer + Command.sep + payword);
+		//# Products Received here
+		message = receive(vendorSocket); 
+		
 		send(vendorSocket, Command.goodbyeFromUser);
 		message = receive(vendorSocket);
 		

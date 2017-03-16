@@ -223,8 +223,8 @@ public class Vendor extends Servent
 							else
 							{
 								send(hostSocket, Command.commitmentPaywordRejectedReceiptAborted + Command.sep + "Everything is aborted");
-								receipt.clear();
 							}
+							receipt.clear();
 						}
 						break;
 					case Command.goodbyeFromUser:
