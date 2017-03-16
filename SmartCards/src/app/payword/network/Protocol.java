@@ -4,7 +4,7 @@ public class Protocol
 {
 	public static class Command
 	{
-		public static final String sep = " ";
+		public static final String sep = "?";
 		
 		public static final String commandError = "COMMAND-ERROR";
 		

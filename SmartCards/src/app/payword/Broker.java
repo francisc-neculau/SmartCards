@@ -7,6 +7,7 @@ import java.util.Map;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 
+import app.payword.account.Account;
 import app.payword.model.Certificate;
 import app.payword.model.Commitment;
 import app.payword.network.Protocol.Command;
@@ -18,8 +19,10 @@ import app.payword.util.PaywordConfiguration;
 public class Broker extends Servent
 {
 	private Map<ServentIdentity, Certificate> registeredUsers;
-	private Map<String, Boolean> commitmentProcessedMap;
+	private Map<Commitment, Boolean> commitmentProcessedMap;
 	private Logger logger;
+	private Account vendorAccount;
+	private Account userAccount;
 	public Broker()
 	{
 		super(PaywordConfiguration.BROKER_LOGGER_NAME, PaywordConfiguration.BROKER_IDENTITY_NUMBER, PaywordConfiguration.BROKER_IP_ADDRESS, PaywordConfiguration.BROKER_PORT_NUMBER);
@@ -69,8 +72,8 @@ public class Broker extends Servent
 			message = receive(user);
 			if(message.contains(" "))
 			{
-				command   = message.substring(0, message.indexOf(" "));
-				arguments = message.substring(message.indexOf(" ") + 1);
+				command   = message.substring(0, message.indexOf(Command.sep));
+				arguments = message.substring(message.indexOf(Command.sep) + 1);
 			}
 			else
 				command = message;
@@ -119,8 +122,8 @@ public class Broker extends Servent
 			message = receive(vendor);
 			if(message.contains(" "))
 			{
-				command   = message.substring(0, message.indexOf(" "));
-				arguments = message.substring(message.indexOf(" ") + 1);
+				command   = message.substring(0, message.indexOf(Command.sep));
+				arguments = message.substring(message.indexOf(Command.sep) + 1);
 			}
 			else
 				command = message;
@@ -143,13 +146,23 @@ public class Broker extends Servent
 					{
 						if(commitment.isPaywordValid(receiptArguments[1], Integer.parseInt(receiptArguments[2])))
 						{
-							commitmentProcessedMap.put(receiptArguments[1], true);
+							commitmentProcessedMap.put(commitment, true);
 						}
 					}
 					break;
 					
 				case Command.paywordSendReceiptEndSignal:
 					send(vendor, Command.paywordAcknowlewdgeReceiptEndSignal);
+					
+					logger.info("All the receipts are sent .... starting to process the payments"); 
+					double amount = 0.0;
+					for(Map.Entry<Commitment, Boolean> entry : commitmentProcessedMap.entrySet())
+					{
+						amount += entry.getKey().getLastPaywordIndex() * 0.01;
+					}
+					
+					Account.transfer(userAccount, vendorAccount, amount);
+					logger.info("The payments are processed!");
 					break;
 					
 				case Command.goodbyeFromVendor:
@@ -163,11 +176,23 @@ public class Broker extends Servent
 		}
 	}
 	
+	public void setVendorAccount(Account vendorAccount) {
+		this.vendorAccount = vendorAccount;
+	}
+
+	public void setUserAccount(Account userAccount) {
+		this.userAccount = userAccount;
+	}
+	
 	public static void main(String[] args)
 	{
 		BasicConfigurator.configure();
 		Broker broker = new Broker();
+		
+		Account vendor 	= new Account(PaywordConfiguration.VENDOR_CARD_NUMBER, 10000);
+		Account user	= new Account(PaywordConfiguration.USER_CARD_NUMBER, 200000);
+		broker.setVendorAccount(vendor);
+		broker.setUserAccount(user);
 		broker.start();
 	}
-
 }

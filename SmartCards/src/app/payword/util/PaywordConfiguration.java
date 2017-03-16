@@ -26,6 +26,7 @@ public class PaywordConfiguration
 	public static final int     USER_PORT_NUMBER     = 6001;
 	public static final Integer USER_IDENTITY_NUMBER = 100;
 	public static final String  USER_LOGGER_NAME     = "User";
+	public static final String  USER_CARD_NUMBER  	 = "4451 0997 8983 0011";
 	
 	/*
 	 * Broker
@@ -42,5 +43,6 @@ public class PaywordConfiguration
 	public static final int     VENDOR_PORT_NUMBER     = 6003;
 	public static final Integer VENDOR_IDENTITY_NUMBER = 300;
 	public static final String  VENDOR_LOGGER_NAME     = "Vendor";
+	public static final String  VENDOR_CARD_NUMBER  	= "3451 7002 8899 2311";
 
 }
