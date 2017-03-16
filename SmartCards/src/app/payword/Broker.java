@@ -70,7 +70,7 @@ public class Broker extends Servent
 		while(true)
 		{
 			message = receive(user);
-			if(message.contains(" "))
+			if(message.contains(Command.sep))
 			{
 				command   = message.substring(0, message.indexOf(Command.sep));
 				arguments = message.substring(message.indexOf(Command.sep) + 1);
@@ -120,7 +120,7 @@ public class Broker extends Servent
 		while(true)
 		{
 			message = receive(vendor);
-			if(message.contains(" "))
+			if(message.contains(Command.sep))
 			{
 				command   = message.substring(0, message.indexOf(Command.sep));
 				arguments = message.substring(message.indexOf(Command.sep) + 1);

@@ -162,7 +162,7 @@ public class User extends Servent
 		
 		send(vendorSocket, Command.helloFromUser + Command.sep + getOwnIdentity().encode());
 		message = receive(vendorSocket);
-		ServentIdentity vendorIdentity = ServentIdentity.decode(message.substring(message.indexOf(" ") + 1));
+		ServentIdentity vendorIdentity = ServentIdentity.decode(message.substring(message.indexOf(Command.sep) + 1));
 		
 		send(vendorSocket, Command.productsCatalogueRequest);
 		message = receive(vendorSocket);
@@ -179,7 +179,7 @@ public class User extends Servent
 		send(vendorSocket, Command.receiptRequest);
 		message = receive(vendorSocket);
 		
-		totalAmount        = Double.valueOf(message.substring(message.indexOf(" ") + 1));
+		totalAmount        = Double.valueOf(message.substring(message.indexOf(Command.sep) + 1));
 		targetPaywordIndex = (int) (totalAmount * 100);
 		commitment = commitmentMap.get(vendorIdentity.getIdentityNumber());
 		targetPaywordIndex += commitment.getLastPaywordIndex();
@@ -203,7 +203,7 @@ public class User extends Servent
 		send(vendorSocket, Command.receiptRequest);
 		message = receive(vendorSocket);
 		
-		totalAmount        = Double.valueOf(message.substring(message.indexOf(" ") + 1));
+		totalAmount        = Double.valueOf(message.substring(message.indexOf(Command.sep) + 1));
 		targetPaywordIndex = (int) (totalAmount * 100);
 		commitment = commitmentMap.get(vendorIdentity.getIdentityNumber());
 		targetPaywordIndex += commitment.getLastPaywordIndex();

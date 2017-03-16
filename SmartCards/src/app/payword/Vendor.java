@@ -141,10 +141,10 @@ public class Vendor extends Servent
 			try
 			{
 				message = receive(hostSocket);
-				if(message.contains(" "))
+				if(message.contains(Command.sep))
 				{
-					command   = message.substring(0, message.indexOf(" "));
-					arguments = message.substring(message.indexOf(" ") + 1);
+					command   = message.substring(0, message.indexOf(Command.sep));
+					arguments = message.substring(message.indexOf(Command.sep) + 1);
 				}
 				else
 					command = message;
