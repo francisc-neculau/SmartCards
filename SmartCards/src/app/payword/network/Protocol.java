@@ -4,7 +4,7 @@ public class Protocol
 {
 	public static class Command
 	{
-		public static final String sep = "?";
+		public static final String sep = "#";
 		
 		public static final String commandError = "COMMAND-ERROR";
 		
@@ -59,9 +59,10 @@ public class Protocol
 		/*
 		 * 	Redeem Paywords
 		 */
-		public static final String paywordRedeemRequest		= "REQUEST-Payword";
-		public static final String paywordRedeemAccept		= "ACCEPT-Payword";
-		public static final String paywordSendReceipt		= "RECEIPT-Payword";
+		public static final String paywordRedeemRequest				= "REQUEST-Payword";
+		public static final String paywordRedeemAccept				= "ACCEPT-Payword";
+		public static final String paywordSendReceipt				= "RECEIPT-Payword";
+		public static final String paywordAcknowledgeSentReceipt	= "RECEIPT-ACK-Payword";
 		
 		public static final String paywordSendReceiptEndSignal 			= "RECEIPT-END-Payword";
 		public static final String paywordAcknowlewdgeReceiptEndSignal 	= "RECEIPT-END-ACK-Payword";

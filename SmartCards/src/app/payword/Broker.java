@@ -149,6 +149,7 @@ public class Broker extends Servent
 							commitmentProcessedMap.put(commitment, true);
 						}
 					}
+					send(vendor,Command.paywordAcknowledgeSentReceipt);
 					break;
 					
 				case Command.paywordSendReceiptEndSignal:

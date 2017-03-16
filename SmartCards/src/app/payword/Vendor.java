@@ -64,6 +64,8 @@ public class Vendor extends Servent
 		{
 			send(brokerSocket, Command.paywordSendReceipt + Command.sep + entry.getValue().encode() + Command.sep 
 						+ entry.getValue().getLastPaywordValue() + Command.sep + entry.getValue().getLastPaywordIndex());
+			
+			message = receive(brokerSocket);
 		}
 		
 		send(brokerSocket,Command.paywordSendReceiptEndSignal);
