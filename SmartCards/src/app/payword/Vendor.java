@@ -86,21 +86,23 @@ public class Vendor extends Servent
 				BufferedReader br;
 				try 
 				{
-					fr = new FileReader(new File(signalFilePath));
-					br = new BufferedReader(fr);
-					String line = br.readLine();
-
-					if(line.contains("0"))
-					{
-						Vendor.this.logger.info("watchdog process - start redeem paywords");
-						Vendor.this.redeemPaywords();
-						Vendor.this.logger.info("watchdog process - end redeem paywords");
-					}
-
 					Thread.sleep(5000);
-
-					br.close();
-					fr.close();
+					while(true)
+					{
+						fr = new FileReader(new File(signalFilePath));
+						br = new BufferedReader(fr);
+						String line = br.readLine();
+	
+						if(line.contains("1"))
+						{
+							Vendor.this.logger.info("watchdog process - start redeem paywords");
+							Vendor.this.redeemPaywords();
+							Vendor.this.logger.info("watchdog process - end redeem paywords");
+						}
+						Thread.sleep(5000);
+						br.close();
+						fr.close();
+					}
 				} 
 				catch (IOException e) 
 				{
@@ -189,7 +191,7 @@ public class Vendor extends Servent
 						break;
 					case Command.commitmentOffer :
 						{		
-							commitment = Commitment.decode(arguments.substring(0, arguments.lastIndexOf(" ")));
+							commitment = Commitment.decode(arguments);
 							// check the signature of the Certificate. 
 							// This requires that the Vendor obtains the brokers
 							// public key in a previous step

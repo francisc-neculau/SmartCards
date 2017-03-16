@@ -85,9 +85,9 @@ public abstract class Servent extends Thread
 		{
 			Thread.sleep(2000);
 			logger.info("Ending of servent initiated. closingSignal and closing the passiveSocket");
-			for (int i = 0; i < 3; i++)
+			for (int i = 1; i <= 3; i++)
 			{
-				logger.info("begin in " + ((i+3)%3) + "..");
+				logger.info("begin in " + i + "..");
 				Thread.sleep(1000);
 			}
 		} catch (InterruptedException e1)

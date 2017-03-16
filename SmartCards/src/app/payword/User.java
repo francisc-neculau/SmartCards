@@ -64,8 +64,7 @@ public class User extends Servent
 		logger.info("Certificate received (serialized form).");
 		logger.info("Deserializing Certificate..");
 		
-		String encodedCertificate   = message.substring(message.indexOf(" ") + 1, message.lastIndexOf(" "));
-		String certificateSignature = message.substring(message.lastIndexOf(" ") + 1);
+		String encodedCertificate   = message.substring(message.indexOf(" ") + 1);
 		certificate = Certificate.decode(encodedCertificate);
 		// FIXME : 
 		// 		This should not be retrieved from the 
@@ -74,7 +73,6 @@ public class User extends Servent
 		brokerIdentity.setPublicKey(ServentIdentity.decodePublicKey(certificate.getBrokerEncodedPublicKey()));
 		
 		logger.info("Certificate : " + certificate);
-		logger.info("Signature   : " + certificateSignature);
 		logger.info("Checking the certificate signature..");
 		if(certificate.isSignatureAuthentic(brokerIdentity.getEncodedPublicKey()))
 			logger.info("Certificate is authentic!");
@@ -117,7 +115,6 @@ public class User extends Servent
 		send(vendorSocket, Command.receiptAcknowleged);
 		message = receive(vendorSocket);
 		
-		
 		/*
 		 * Case of first Commitment of Day
 		 */
@@ -127,7 +124,9 @@ public class User extends Servent
 		Integer hashChainLength = 10000;
 		Double  chainRingValue  = 0.01;
 		Commitment commitment = new Commitment(vendorIdentity.getIdentityNumber(), certificate, hashChainRoot, DateUtil.getInstance().generateDate(), hashChainLength, chainRingValue);
+		
 		commitment.generateDigitalSignature(getPrivateKey());
+		commitment.setPaywordsList(paywordsList);
 		
 		commitmentMap.put(vendorIdentity.getIdentityNumber(), commitment);
 		
@@ -166,16 +165,22 @@ public class User extends Servent
 		send(vendorSocket, Command.productReservationRequest + Command.sep + "0");
 		message = receive(vendorSocket);
 		
+		send(vendorSocket, Command.productReservationRequest + Command.sep + "1");
+		message = receive(vendorSocket);
+		
 		send(vendorSocket, Command.receiptRequest);
 		message = receive(vendorSocket);
 		Double totalAmount = Double.valueOf(message.substring(message.indexOf(" ") + 1));
 		Integer targetPaywordIndex = (int) (totalAmount * 100);
 		
+		Commitment commitment = commitmentMap.get(vendorIdentity.getIdentityNumber());
+		targetPaywordIndex += commitment.getLastPaywordIndex();
+		
 		send(vendorSocket, Command.receiptAcknowleged);
 		message = receive(vendorSocket);
 		
 		//# Compute the ChainRing and send it!
-		String payword = "(";// + paywordsList.get(targetPaywordIndex) + "," + targetPaywordIndex + ")";
+		String payword = "(" + commitment.getPaywordsList().get(targetPaywordIndex) + "," + targetPaywordIndex + ")";
 		send(vendorSocket, Command.commitmentPaywordOffer + Command.sep + payword);
 		//# Products Received here
 		message = receive(vendorSocket); 
@@ -215,18 +220,18 @@ public class User extends Servent
 		
 		User user = new User(brokerIdentity, new ServentIdentity [] {vendorIdentity});
 		user.start();
-//		user.obtainCertificate();
-//		
-//		user.simulateSingleFairPayment();
-//		// sleep between actions
-//		try
-//		{
-//			Thread.sleep(3000);
-//		} catch (InterruptedException e)
-//		{
-//			e.printStackTrace();
-//		}
-//		user.simulateSingleFairPayment();
+		user.obtainCertificate();
+		
+		user.simulateSingleFairPayment();
+		// sleep between actions
+		try
+		{
+			Thread.sleep(3000);
+		} catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
+		user.simulateMultipleFairPayment();
 //		// sleep between actions
 //		try
 //		{

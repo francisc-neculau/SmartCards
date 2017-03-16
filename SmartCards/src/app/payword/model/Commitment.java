@@ -7,6 +7,7 @@ import app.payword.crypto.CryptoFacade;
 
 public class Commitment
 {
+	// only the below 6 will be hashed for the signature
 	private Integer vendorIdentityNumber;
 	private Certificate userCertificate;
 	private String hashChainRoot;
@@ -14,11 +15,13 @@ public class Commitment
 	private Integer hashChainLength;
 	private Double  chainRingValue;
 
-	private String  lastPaywordValue;	// cl	
+	private String  lastPayword;	// cl	
 	private Integer lastPaywordIndex;	// l
 
 	private String digitalSignature;
 
+	private List<String> paywordsList;
+	
 	public Commitment(Integer vendorIdentityNumber, Certificate userCertificate, String hashChainRoot, String currentDate, Integer hashChainLength, Double chainRingValue)
 	{
 		this.vendorIdentityNumber = vendorIdentityNumber;
@@ -28,7 +31,7 @@ public class Commitment
 		this.hashChainLength = hashChainLength;
 		this.chainRingValue  = chainRingValue;
 		
-		this.lastPaywordValue = hashChainRoot;
+		this.lastPayword = hashChainRoot;
 		this.lastPaywordIndex = 0;
 		
 		// The Certificate should be signed after instantiation.
@@ -45,7 +48,7 @@ public class Commitment
 	
 	public void setLastPaywordUsed(String payword, Integer index)
 	{
-		this.lastPaywordValue = payword;
+		this.lastPayword = payword;
 		this.lastPaywordIndex = index;
 	}
 	
@@ -57,13 +60,13 @@ public class Commitment
 		}
 		else if(index == lastPaywordIndex + 1)
 		{
-			if(!CryptoFacade.getInstance().generateHashChain(payword, 1).get(0).equals(lastPaywordValue))
+			if(!CryptoFacade.getInstance().generateHashChain(payword, 1).get(0).equals(lastPayword))
 				return false;
 		}
 		else
 		{
 			List<String> missingHashChain = CryptoFacade.getInstance().generateHashChain(payword, (index - lastPaywordIndex));
-			if(!missingHashChain.get(0).equals(lastPaywordValue))
+			if(!missingHashChain.get(0).equals(lastPayword))
 				return false;
 		}
 		return true;
@@ -83,7 +86,7 @@ public class Commitment
 
 	public String generateHash()
 	{
-		String hash = CryptoFacade.getInstance().generateHash(this.encode());
+		String hash = CryptoFacade.getInstance().generateHash(this.toString());
 		return hash;
 	}
 
@@ -155,7 +158,7 @@ public class Commitment
 	}
 	
 	public String getLastPaywordValue() {
-		return lastPaywordValue;
+		return lastPayword;
 	}
 
 	public Integer getLastPaywordIndex() {
@@ -167,11 +170,34 @@ public class Commitment
 		this.digitalSignature = digitalSignature;
 	}
 	
+	public List<String> getPaywordsList()
+	{
+		return paywordsList;
+	}
+	
+	public void setPaywordsList(List<String> paywordsList)
+	{
+		this.paywordsList = paywordsList;
+	}
+
 	@Override
 	public String toString()
 	{
-		return (vendorIdentityNumber + " " + userCertificate + " " + hashChainRoot + " " + currentDate + " " + hashChainLength + " " + chainRingValue);
+		StringBuilder sb = new StringBuilder();
+		sb.append(vendorIdentityNumber);
+		sb.append(" ");
+		sb.append(userCertificate);
+		sb.append(" ");
+		sb.append(hashChainRoot);
+		sb.append(" ");
+		sb.append(currentDate);
+		sb.append(" ");
+		sb.append(hashChainLength);
+		sb.append(" ");
+		sb.append(chainRingValue);
+		return sb.toString();
 	}
+
 
 
 }

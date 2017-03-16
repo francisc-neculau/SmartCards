@@ -7,14 +7,13 @@ import app.payword.network.ServentIdentity;
 
 public class Certificate
 {
+	// only the below 7 will be hashed for the signature
 	private Integer brokerIdentityNumber;
 	private String brokerEncodedPublicKey;
-	
 	private Integer userIdentityNumber;
 	private String userEncodedPublicKey;
 	private String userIpAddress;
 	private String creditCardNumber;
-	
 	private String expirationDate;
 
 	private String digitalSignature;
@@ -44,15 +43,15 @@ public class Certificate
 		return isAuthentic;
 	}
 	
-	public String generateSignature(PrivateKey privateKey)
+	public void generateSignature(PrivateKey privateKey)
 	{
 		String signature = CryptoFacade.getInstance().generateCryptographicSignature(generateHash(), privateKey);
-		return signature;
+		digitalSignature = signature;
 	}
 
 	public String generateHash()
 	{
-		String certificateHash = CryptoFacade.getInstance().generateHash(this.encode());
+		String certificateHash = CryptoFacade.getInstance().generateHash(this.toString());
 		return certificateHash;
 	}
 	

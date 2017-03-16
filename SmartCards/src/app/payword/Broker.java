@@ -13,6 +13,7 @@ import app.payword.network.Protocol.Command;
 import app.payword.network.Servent;
 import app.payword.network.ServentIdentity;
 import app.payword.util.DateUtil;
+import app.payword.util.PaywordConfiguration;
 
 public class Broker extends Servent
 {
@@ -21,8 +22,8 @@ public class Broker extends Servent
 	private Logger logger;
 	public Broker()
 	{
-		super("Broker", 100, "127.0.0.2", 6790);
-		logger = Logger.getLogger("Broker");
+		super(PaywordConfiguration.BROKER_LOGGER_NAME, PaywordConfiguration.BROKER_IDENTITY_NUMBER, PaywordConfiguration.BROKER_IP_ADDRESS, PaywordConfiguration.BROKER_PORT_NUMBER);
+		logger = Logger.getLogger(PaywordConfiguration.BROKER_LOGGER_NAME);
 		registeredUsers = new HashMap<>();
 		commitmentProcessedMap = new HashMap<>();
 	}
