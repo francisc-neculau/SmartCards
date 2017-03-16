@@ -48,22 +48,22 @@ public class Main
 		ServentIdentity userIdentity   = new ServentIdentity(200, "127.0.0.1", 6767, 
 				(PublicKey)userKeys.get(CryptoFacade.PUBLIC_KEY));
 		
-		Certificate certificate = new Certificate(brokerIdentity, userIdentity, "809", "9807");
-		String certificateSignature = certificate.generateSignature(
-					(PrivateKey)brokerKeys.get(CryptoFacade.PRIVATE_KEY)
-				);
-		String encoded = certificate.encode();
-		
-		
-		Certificate decoded = Certificate.decode(encoded);
-		
-		if(cf.isSignatureAuthentic(certificate.generateHash(), certificateSignature, (PublicKey)brokerKeys.get(CryptoFacade.PUBLIC_KEY)))
-			System.out.println("Yes!");
-
-		if(Certificate.isSignatureAuthentic(decoded, certificateSignature, decoded.getBrokerEncodedPublicKey()))
-			System.out.println("Certificate is authentic!");
-		else
-			System.out.println("Certificate is not authentic!");
+//		Certificate certificate = new Certificate(brokerIdentity, userIdentity, "809", "9807");
+//		String certificateSignature = certificate.generateSignature(
+//					(PrivateKey)brokerKeys.get(CryptoFacade.PRIVATE_KEY)
+//				);
+//		String encoded = certificate.encode();
+//		
+//		
+//		Certificate decoded = Certificate.decode(encoded);
+//		
+//		if(cf.isSignatureAuthentic(certificate.generateHash(), certificateSignature, (PublicKey)brokerKeys.get(CryptoFacade.PUBLIC_KEY)))
+//			System.out.println("Yes!");
+//
+//		if(Certificate.isSignatureAuthentic(decoded, certificateSignature, decoded.getBrokerEncodedPublicKey()))
+//			System.out.println("Certificate is authentic!");
+//		else
+//			System.out.println("Certificate is not authentic!");
 		
 		
 //		byte b = -128;

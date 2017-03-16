@@ -3,6 +3,7 @@ package app.payword;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -84,14 +85,20 @@ public class Vendor extends Servent
 			public void run() 
 			{
 				String signalFilePath = "resources/signal.txt";
+				File f;
 				FileReader fr;
+				FileWriter fw;
 				BufferedReader br;
 				try 
 				{
 					Thread.sleep(5000);
+					boolean changeTheSignal = false;
 					while(true)
 					{
-						fr = new FileReader(new File(signalFilePath));
+						f = new File(signalFilePath);
+						if(!f.canRead())
+							continue;
+						fr = new FileReader(f);
 						br = new BufferedReader(fr);
 						String line = br.readLine();
 	
@@ -100,10 +107,20 @@ public class Vendor extends Servent
 							Vendor.this.logger.info("watchdog process - start redeem paywords");
 							Vendor.this.redeemPaywords();
 							Vendor.this.logger.info("watchdog process - end redeem paywords");
+							changeTheSignal = true;
 						}
 						Thread.sleep(5000);
 						br.close();
 						fr.close();
+						if(changeTheSignal)
+						{
+							// FIXME : Let's hope it does not crash.. because the signal must be written there !
+							f = new File(signalFilePath);
+							fw = new FileWriter(f, false);
+							fw.write("0");
+							fw.close();
+							changeTheSignal = false;
+						}
 					}
 				} 
 				catch (IOException e) 
