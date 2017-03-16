@@ -192,12 +192,62 @@ public class User extends Servent
 		send(vendorSocket, Command.commitmentPaywordOffer + Command.sep + payword);
 		//# Products Received here
 		message = receive(vendorSocket); 
-
+		commitment.setLastPaywordUsed(payword, targetPaywordIndex);
 		
 		/*
 		 * Second purchase
 		 */
 		send(vendorSocket, Command.productReservationRequest + Command.sep + "2");
+		message = receive(vendorSocket);
+		
+		send(vendorSocket, Command.receiptRequest);
+		message = receive(vendorSocket);
+		
+		totalAmount        = Double.valueOf(message.substring(message.indexOf(Command.sep) + 1));
+		targetPaywordIndex = (int) (totalAmount * 100);
+		targetPaywordIndex += commitment.getLastPaywordIndex();
+		
+		send(vendorSocket, Command.receiptAcknowleged);
+		message = receive(vendorSocket);
+		
+		//# Compute the ChainRing and send it!
+		payword = "(" + commitment.getPaywordsList().get(targetPaywordIndex) + "," + targetPaywordIndex + ")";
+		send(vendorSocket, Command.commitmentPaywordOffer + Command.sep + payword);
+		//# Products Received here
+		message = receive(vendorSocket); 
+		commitment.setLastPaywordUsed(payword, targetPaywordIndex);
+		
+		send(vendorSocket, Command.goodbyeFromUser);
+		message = receive(vendorSocket);
+		
+		disconnectFromServant(vendorSocket);
+	}
+	
+	public void simulateForgeryPayment()
+	{
+		Socket vendorSocket = connectToServant(vendorIdentity);
+		if(vendorSocket == null)
+			return;
+		String message = "";
+
+		Integer targetPaywordIndex;
+		Double totalAmount;
+		Commitment commitment;
+		String payword;
+		
+		logger.info("--- SIMULATING FORGERY PAYMENT ---");
+		
+		send(vendorSocket, Command.helloFromUser + Command.sep + getOwnIdentity().encode());
+		message = receive(vendorSocket);
+		ServentIdentity vendorIdentity = ServentIdentity.decode(message.substring(message.indexOf(Command.sep) + 1));
+		
+		send(vendorSocket, Command.productsCatalogueRequest);
+		message = receive(vendorSocket);
+		
+		/*
+		 * First purchase
+		 */
+		send(vendorSocket, Command.productReservationRequest + Command.sep + "0");
 		message = receive(vendorSocket);
 		
 		send(vendorSocket, Command.receiptRequest);
@@ -212,27 +262,14 @@ public class User extends Servent
 		message = receive(vendorSocket);
 		
 		//# Compute the ChainRing and send it!
-		payword = "(" + commitment.getPaywordsList().get(targetPaywordIndex) + "," + targetPaywordIndex + ")";
+		payword = "(" + commitment.getPaywordsList().get(20) + "," + targetPaywordIndex + ")";
 		send(vendorSocket, Command.commitmentPaywordOffer + Command.sep + payword);
 		//# Products Received here
 		message = receive(vendorSocket); 
+		commitment.setLastPaywordUsed(payword, targetPaywordIndex);
 		
 		send(vendorSocket, Command.goodbyeFromUser);
 		message = receive(vendorSocket);
-		
-		disconnectFromServant(vendorSocket);
-	}
-	
-	public void simulateForgeryPayment()
-	{
-		Socket vendorSocket = connectToServant(vendorIdentity);
-		if(vendorSocket == null)
-			return;
-		//String message = "";
-		
-		logger.info("--- SIMULATING FORGERY PAYMENT ---");
-		
-		
 		
 		disconnectFromServant(vendorSocket);
 	}
@@ -264,15 +301,15 @@ public class User extends Servent
 			e.printStackTrace();
 		}
 		user.simulateMultipleFairPayment();
-//		// sleep between actions
-//		try
-//		{
-//			Thread.sleep(3000);
-//		} catch (InterruptedException e)
-//		{
-//			e.printStackTrace();
-//		}
-//		 user.simulateForgeryPayment();
+		// sleep between actions
+		try
+		{
+			Thread.sleep(3000);
+		} catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
+		 user.simulateForgeryPayment();
 		 user.end();
 	}
 }

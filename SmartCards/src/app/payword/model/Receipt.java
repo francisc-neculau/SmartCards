@@ -53,7 +53,7 @@ public class Receipt
 	{
 		StringBuilder sb = new StringBuilder();
 		for (Product product : products)
-			sb.append(product);
+			sb.append(product).append("+");
 		return sb.toString();
 	}
 }
